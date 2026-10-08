@@ -1,0 +1,119 @@
+[project]
+name = "version-info"
+dynamic = ["version"]
+description = "Dependency inventory CLI - see current and latest versions across ecosystems"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "dockerfile>=3.4.0",
+    "pyyaml>=6.0.3",
+    "tabulate>=0.9.0",
+]
+
+[project.scripts]
+version-info = "version_info.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.15.12",
+    "mypy>=1.13",
+    "pyright>=1.1",
+    "deptry>=0.20",
+    "cyclonedx-bom>=4.2",
+    "tabulate>=0.9.0",
+    "types-pyyaml>=6.0.12.20260518",
+    "types-tabulate>=0.10.0.20260508",
+]
+
+[build-system]
+requires = ["hatchling>=1.25.0", "hatch-vcs>=0.4.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+local_scheme = "node-and-timestamp"
+
+[tool.hatch.build]
+packages = ["version_info"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["version_info", "tests"]
+extend-exclude = ["dist", ".venv", "references"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "C4", "UP", "SIM", "RUF",
+    "ASYNC", "S", "PTH", "DTZ", "FA", "PL",
+    "ARG", "C90", "ERA",
+]
+ignore = [
+    "PLR0913",
+    "PLR2004",
+    "S101",
+    "S603",   # subprocess called with controlled internal argv, not user input
+    "S310",   # urllib opens known registry URLs validated by caller
+]
+task-tags = ["TODO", "FIXME", "HACK", "XXX"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "PLR", "ARG", "DTZ", "ERA"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.isort]
+known-first-party = ["version_info"]
+
+[tool.ruff.format]
+preview = true
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_reexport = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+files = ["version_info"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+strict = false
+
+[[tool.mypy.overrides]]
+module = "dockerfile"
+ignore_missing_imports = true
+
+[tool.pyright]
+include = ["version_info"]
+exclude = ["dist", ".venv", "references"]
+pythonVersion = "3.10"
+typeCheckingMode = "strict"
+reportPrivateImportUsage = "warning"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownParameterType = "none"
+
+[tool.deptry]
+extend_exclude = ["dist", ".venv", "references"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --cov=version_info --cov-report=term-missing"
+markers = ["integration: requires external network or docker"]
+filterwarnings = ["error::DeprecationWarning"]

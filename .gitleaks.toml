@@ -1,0 +1,15 @@
+title = "version-info gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow test fixtures and documented example placeholder tokens"
+paths = [
+    '''tests/fixtures/''',
+]
+regexes = [
+    '''AKIA[0-9A-Z]{16}''',
+    '''EXAMPLE-(TOKEN|KEY)-[0-9]+''',
+]
+regexTarget = "match"

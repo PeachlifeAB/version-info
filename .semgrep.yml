@@ -1,0 +1,8 @@
+rules:
+  - id: no-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: "eval/exec is forbidden"
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)

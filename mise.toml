@@ -1,0 +1,42 @@
+[tools]
+python = "3.14"
+
+[tasks.lint]
+run = ["uv run ruff check .", "uv run ruff format --check ."]
+
+[tasks."lint:fix"]
+run = ["uv run ruff check . --fix", "uv run ruff format ."]
+
+[tasks.typecheck]
+run = ["uv run mypy", "uv run pyright"]
+
+[tasks."lint:dead"]
+run = "uv run deptry ."
+
+[tasks."lint:secrets"]
+run = "gitleaks detect --redact --source . --config .gitleaks.toml"
+
+[tasks."lint:semgrep"]
+run = "semgrep ci --config .semgrep.yml"
+
+[tasks."lint:sbom"]
+run = "uv run cyclonedx-py environment --output-format json --output-file sbom.cdx.json"
+
+[tasks."lint:all"]
+run = [
+    "mise run lint",
+    "mise run typecheck",
+    "mise run lint:dead",
+    "mise run lint:secrets",
+]
+
+[tasks.test]
+run = "uv run pytest"
+
+[tasks.ci]
+run = [
+    "mise run lint:all",
+    "mise run lint:semgrep",
+    "mise run lint:sbom",
+    "mise run test",
+]
