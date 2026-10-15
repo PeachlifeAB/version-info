@@ -1,22 +1,57 @@
 # version-info
 
-Scans your project dependencies and prints installed VS latest version numbers
-in a human readable table or as json.
+Lists the versions your project depends on next to the latest published version, as a
+table or JSON.
 
-This is a hobby project tool for local version checking.
-Dependabot and Renovate is recommended to use on server side for automatic PRs
-and deep security audits.
+A local version check for personal projects. For automatic pull requests and security
+audits on a server, use Dependabot or Renovate.
 
-## Usage
+## Quick start
 
 ```bash
-# Human readable table showing curr
-uv run version-info /path/to/project
+git clone git@github.com:PeachlifeAB/version-info.git
+cd version-info
+uv sync
 
-# JSON output for scripting
-uv run version-info /path/to/project --json
-uv run version-info . --json | jq '.[] | .rows[] | select(.state == "update_available")'
+uv run version-info /path/to/project
 ```
+
+Show only what is behind:
+
+```bash
+uv run version-info /path/to/project --stale
+```
+
+## Commands
+
+```text
+version-info [PATH] [options]
+```
+
+| Option                  | Default | Effect                                                                  |
+| ----------------------- | ------- | ----------------------------------------------------------------------- |
+| `PATH`                  | `.`     | Directory to scan. Its immediate child directories are scanned too.     |
+| `--json`                | off     | Print JSON instead of tables.                                           |
+| `--stale`               | off     | Show only rows not confirmed latest, including unchecked rows.          |
+| `-o`, `--output-file`   | none    | Also write the output to this file. See below.                          |
+| `--concurrency N`       | `16`    | Maximum concurrent registry lookups.                                    |
+| `--timeout SECONDS`     | `10`    | Network and command timeout.                                            |
+| `--verbose`             | off     | Print scanner diagnostics to stderr.                                    |
+| `--version`             |         | Print the version and exit.                                             |
+
+With `--stale`, `--output-file` writes nothing when every row is latest, and removes an
+existing file. Table mode then prints `All dependencies are latest.` to stderr, so stdout
+stays empty.
+
+Scripting:
+
+```bash
+version-info . --json | jq -r '.sections[].rows[] | select(.state == "update_available") | .name'
+version-info . --stale --json -o stale.json
+```
+
+Environment variables and their defaults are listed in [`.env.example`](.env.example).
+Command-line options win over environment variables.
 
 ## Output
 
@@ -26,169 +61,45 @@ NAME    CURRENT    LATEST    SOURCE
 ------  ---------  --------  ---------
 gh      2.90.0     2.92.0    mise.toml
 yq      4.53.2     4.53.2    mise.toml
-
-Docker  10 images, 3 updates, 2 local, 1 registry issue
-NAME                               CURRENT        LATEST         STATUS    SOURCE
----------------------------------  -------------  -------------  --------  ------------------
-ai-db-pgbackrest                                                 local     docker-compose.yml
-falkordb-server                    v4.18.1        v4.18.3        public    docker-compose.yml
-openmemory-mcp                     latest         latest         public    docker-compose.yml
-tailscale                          v1.96.5        v1.96.5        public    docker-compose.yml
-ghcr.io/user/comfyui-mcp-server    v0.1.1                        private   docker-compose.yml
-ghcr.io/open-webui/open-webui      main (b8095)   main (c2e47)   public    docker-compose.yml
 ```
 
-The table is intentionally plain: no icons, glyphs, or legend.
+- `CURRENT` and `LATEST` hold version values only. Problems appear in `STATUS`.
+- `STATUS` shows `public`, `private`, `local`, `pinned`, `auth`, `rate`, `not found`,
+  `timeout` or `error`. It is omitted when a section has no issues.
+- `SOURCE` names the file that produced the row.
+- Color applies to `CURRENT` only: green is up to date, yellow is minor or patch behind,
+  red is major behind.
 
-- `CURRENT` and `LATEST` are version facts only — values like `1.2.3`, `v1.2.3`, `3.12-slim`, `main`,
-  or `latest`. Operational outcomes belong in `STATUS`.
-- `STATUS` terse reasons: `public`, `private`, `local`, `auth`, `rate`, `not found`, `timeout`, `error`.
-  Omitted entirely when the section has no issues.
-- `SOURCE` names the file that produced the row: `mise.toml`, `docker-compose.yml`, `Cargo.lock`, etc.
+## Supported ecosystems
 
-Color applies only to `CURRENT`: green means up-to-date, yellow means minor/patch behind,
-red means major behind.
+| Ecosystem     | Marker files                                                 |
+| ------------- | ------------------------------------------------------------ |
+| Docker        | `docker-compose.yml`, `compose.yml`, `Dockerfile`            |
+| Python (PyPI) | `uv.lock`, `requirements.txt`, `Pipfile.lock`                |
+| Node (npm)    | `package-lock.json`, `pnpm-lock.yaml`                        |
+| Go            | `go.mod`, `go.sum`                                           |
+| Rust (Cargo)  | `Cargo.lock`                                                 |
+| Ruby (Gems)   | `Gemfile.lock`                                               |
+| Gradle        | `gradle.lockfile`                                            |
+| Nix           | `flake.lock`                                                 |
+| SwiftPM       | `Package.resolved`                                           |
+| Terraform     | `.terraform.lock.hcl`                                        |
+| Tools (mise)  | `mise.toml`, `.mise.toml`, `.tool-versions`                  |
 
-## Supported Ecosystems
+Only direct dependencies are reported. Scanner selection is marker-driven: a scanner runs
+only when its marker file exists.
 
-| Ecosystem     | Marker files                                      |
-| ------------- | ------------------------------------------------- |
-| Docker        | `docker-compose.yml`, `compose.yml`, `Dockerfile` |
-| Python (PyPI) | `uv.lock`, `requirements.txt`, `Pipfile.lock`     |
-| Node (npm)    | `package-lock.json`                               |
-| Go            | `go.mod`, `go.sum`                                |
-| Rust (Cargo)  | `Cargo.lock`                                      |
-| Ruby (Gems)   | `Gemfile.lock`                                    |
-| Nix           | `flake.lock`                                      |
-| SwiftPM       | `Package.resolved`                                |
-| Terraform     | `.terraform.lock.hcl`                             |
-| Tools (mise)  | `mise.toml`, `.mise.toml`, `.tool-versions`       |
+Docker image resolution, Dockerfile install detection and scanner internals are described
+in [`docs/dev.md`](docs/dev.md).
 
-## Scan Scope
+## Development
 
-Scans project lockfiles, manifests, runtime tools for external dependencies.
-
-The CLI scans the target directory plus immediate child directories, supporting
-simple monorepos while ignoring noise.
-
-Default child directories excluded:
-
-```text
-__pycache__  build  dist  docs  examples  fixtures
-node_modules  references  test  tests  vendor  archived  worktrees
+```bash
+uv sync
+mise run ci
 ```
 
-Scanner selection is marker-driven — a scanner only runs when its marker file is present.
-
-## Docker
-
-Channel tags (`latest`, `stable`, `edge`, `nightly`) and branch tags (`main`, `master`) are
-resolved via digest mapping.
-
-1. Fetch the manifest digest for the channel tag.
-2. Find the version tag (e.g. `v1.96.5`) that shares that digest — zero extra requests on Docker Hub.
-3. If no version tag matches, use the channel tag as identity and compare local vs upstream digest
-   for freshness.
-
-Branch tags that don't align with a version release show a short digest suffix:
-
-```text
-ghcr.io/open-webui/open-webui   main (b8095)   main (c2e47)   public
-```
-
-No `docker run` or image content probing. Pure registry API.
-
-### Local build artifacts and Dockerfile dependencies
-
-Build-only Compose services (services with `build:` but no `image:`) are detected and shown with
-`local` status. For example, a service `cognee-api` defined as:
-
-```yaml
-services:
-  cognee-api:
-    build:
-      context: .
-      dockerfile: docker/cognee-api/Dockerfile
-```
-
-Appears as:
-
-```text
-NAME        CURRENT   LATEST   STATUS  SOURCE
----------   -------   ------   ------  ------
-cognee-api                     local   docker-compose.yml
-```
-
-For local build artifacts, you can add a **Dockerfile annotation** to enable version tracking:
-
-```dockerfile
-# version-info: datasource=pypi depName=cognee artifact=cognee-api
-ARG COGNEE_VERSION=1.0.1
-RUN pip install cognee==${COGNEE_VERSION}
-```
-
-Supported formats:
-
-- `# version-info: datasource=pypi depName=<package> artifact=<service-name>`
-- `# renovate: datasource=pypi depName=<package>` (artifact name inferred from service)
-
-When an annotation is present, CURRENT shows the resolved ARG value and LATEST shows the registry's
-latest version.
-
-### Dockerfile installs fold into native ecosystem tables
-
-Package installs from Dockerfile RUN commands (pip, npm, go, cargo, gem) appear in their native ecosystem
-section, not in the Docker section. The SOURCE column shows `docker/<service>/<dockerfile>` so you can
-trace the origin.
-
-```text
-Python (PyPI)  2 packages, 1 update
-NAME       CURRENT              LATEST      STATUS   SOURCE
---------   -----------------    --------    ------   ------
-cognee     >=1.0.9,<2.0.0     1.5.0         pinned   docker/cognee-api/Dockerfile
-requests   unpinned             2.32.3      pinned   docker/api/Dockerfile
-```
-
-### Range and unpinned declarations
-
-Packages declared with version ranges or without pins show their constraint as CURRENT instead of
-an exact version. Freshness math is disabled for these rows since the constraint is not a version fact.
-
-```text
-NAME     CURRENT              LATEST      STATUS
-------   -----------------    --------    ------
-falkordb >=1.0.9,<2.0.0       1.5.0       pinned
-requests unpinned            2.32.3      pinned
-```
-
-The `pinned` status indicates the constraint is declared but not a precise version.
-These rows count as dependencies but not as update_available in the section summary.
-
-## Mise
-
-When `mise` is available, the scanner calls:
-
-- `mise ls --current --installed --json --local` for the installed version.
-- `mise outdated --local --json` for the latest version (one call for all tools).
-
-If `mise` is unavailable, the declared version in config is used as a fallback with `not checked` status.
-
-## Direct Dependencies Only
-
-Scanners filter to direct dependencies to avoid flooding registries with transitive lockfile entries:
-
-- **npm**: reads `dependencies`/`devDependencies` from the root package in `package-lock.json`.
-- **Go**: prefers `go.mod` (direct deps, no `// indirect`) over `go.sum`.
-- **Cargo**: cross-references `Cargo.lock` with `Cargo.toml`; excludes workspace-local crates.
-
-## Environment
-
-| Variable                   | Default | Description                                  |
-| -------------------------- | ------- | -------------------------------------------- |
-| `VERSION_INFO_TIMEOUT_S`   | `10`    | Network/exec timeout in seconds              |
-| `VERSION_INFO_VERBOSE`     | `0`     | Set to `1` for scanner diagnostics on stderr |
-| `VERSION_INFO_CONCURRENCY` | `4`     | Global cap on concurrent registry lookups    |
-| `GITHUB_TOKEN`             | —       | Nix, SwiftPM and improved rate limits        |
+See [`docs/dev.md`](docs/dev.md) for tasks, scanner internals and the registry details.
 
 ## License
 
