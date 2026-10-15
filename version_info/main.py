@@ -36,6 +36,7 @@ class Ctx:
     timeout_s: float
     verbose: bool
     json_output: bool
+    stale_only: bool
     concurrency: int
 
 
@@ -68,6 +69,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--json",
         action="store_true",
         help="Output JSON instead of table.",
+    )
+    p.add_argument(
+        "--stale",
+        action="store_true",
+        help="Show only rows not confirmed latest.",
     )
     p.add_argument(
         "--concurrency",
@@ -242,6 +248,7 @@ def main(argv: list[str] | None = None) -> int:
         timeout_s=float(ns.timeout),
         verbose=bool(ns.verbose),
         json_output=bool(getattr(ns, "json", False)),
+        stale_only=bool(ns.stale),
         concurrency=max(1, int(ns.concurrency)),
     )
 
@@ -277,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     # Merge sections with the same ecosystem title
     sections = _merge_sections(all_sections)
 
-    sys.stdout.write(render(sections, json_output=ctx.json_output))
+    sys.stdout.write(render(sections, json_output=ctx.json_output, stale_only=ctx.stale_only))
     return 0
 
 
