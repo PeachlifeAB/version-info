@@ -73,7 +73,7 @@ def test_render_without_stale_only_keeps_all_rows() -> None:
     assert names == ["current-pkg", "minor-behind-pkg", "unchecked-pkg"]
 
 
-def test_render_stale_only_says_when_everything_is_latest() -> None:
+def test_render_stale_only_is_empty_when_everything_is_latest() -> None:
     latest_only = [
         Section(
             title="Python (PyPI)",
@@ -90,4 +90,4 @@ def test_render_stale_only_says_when_everything_is_latest() -> None:
         ),
     ]
 
-    assert render(latest_only, stale_only=True) == "All dependencies are latest.\n"
+    assert render(latest_only, stale_only=True) == ""

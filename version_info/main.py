@@ -10,7 +10,7 @@ from pathlib import Path
 from . import __version__
 from .model import DepRow, Section
 from .registry_docker import scan_docker_install_sections
-from .report import render
+from .report import ALL_LATEST_MESSAGE, keep_stale_sections, render
 from .scanners import SCANNERS, ScannerDef
 
 DEFAULT_EXCLUDED_SCAN_DIRS = {
@@ -37,6 +37,7 @@ class Ctx:
     verbose: bool
     json_output: bool
     stale_only: bool
+    output_file: str | None
     concurrency: int
 
 
@@ -74,6 +75,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--stale",
         action="store_true",
         help="Show only rows not confirmed latest.",
+    )
+    p.add_argument(
+        "-o",
+        "--output-file",
+        help="Also write the report to this file. With --stale, no file is written "
+        "when no rows are stale, and an existing file is removed.",
     )
     p.add_argument(
         "--concurrency",
@@ -249,6 +256,7 @@ def main(argv: list[str] | None = None) -> int:
         verbose=bool(ns.verbose),
         json_output=bool(getattr(ns, "json", False)),
         stale_only=bool(ns.stale),
+        output_file=ns.output_file,
         concurrency=max(1, int(ns.concurrency)),
     )
 
@@ -284,7 +292,17 @@ def main(argv: list[str] | None = None) -> int:
     # Merge sections with the same ecosystem title
     sections = _merge_sections(all_sections)
 
-    sys.stdout.write(render(sections, json_output=ctx.json_output, stale_only=ctx.stale_only))
+    report = render(sections, json_output=ctx.json_output, stale_only=ctx.stale_only)
+    sys.stdout.write(report)
+
+    stale_rows_present = any(section.rows for section in keep_stale_sections(sections))
+    if ctx.stale_only and not stale_rows_present:
+        if not ctx.json_output:
+            sys.stderr.write(ALL_LATEST_MESSAGE)
+        if ctx.output_file:
+            Path(ctx.output_file).unlink(missing_ok=True)
+    elif ctx.output_file:
+        Path(ctx.output_file).write_text(report, encoding="utf-8")
     return 0
 
 

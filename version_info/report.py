@@ -212,7 +212,7 @@ def _render_json(sections: list[Section]) -> str:
     return json.dumps({"sections": out_sections}, indent=2) + "\n"
 
 
-def _keep_rows_not_confirmed_latest(sections: list[Section]) -> list[Section]:
+def keep_stale_sections(sections: list[Section]) -> list[Section]:
     return [
         Section(
             title=section.title,
@@ -224,11 +224,11 @@ def _keep_rows_not_confirmed_latest(sections: list[Section]) -> list[Section]:
 
 def render(sections: list[Section], json_output: bool = False, stale_only: bool = False) -> str:
     if stale_only:
-        sections = _keep_rows_not_confirmed_latest(sections)
+        sections = keep_stale_sections(sections)
     if json_output:
         return _render_json(sections)
     if stale_only and not any(section.rows for section in sections):
-        return ALL_LATEST_MESSAGE
+        return ""
 
     printed: list[str] = []
     for section in sections:
