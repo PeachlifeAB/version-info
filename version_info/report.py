@@ -14,6 +14,7 @@ RED = "\033[31m"
 RESET = "\033[0m"
 _VERSION_FACT_RE = re.compile(r"^@?v?\d+(?:[._]\d+)*(?:[-+][0-9A-Za-z._+-]+)?$")
 _BRANCH_FACTS = {"main", "master", "latest", "stable", "edge", "nightly"}
+ALL_LATEST_MESSAGE = "All dependencies are latest.\n"
 
 
 def _clean_note(note: str | None) -> str | None:
@@ -226,6 +227,8 @@ def render(sections: list[Section], json_output: bool = False, stale_only: bool 
         sections = _keep_rows_not_confirmed_latest(sections)
     if json_output:
         return _render_json(sections)
+    if stale_only and not any(section.rows for section in sections):
+        return ALL_LATEST_MESSAGE
 
     printed: list[str] = []
     for section in sections:

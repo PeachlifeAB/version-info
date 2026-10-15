@@ -71,3 +71,23 @@ def test_render_without_stale_only_keeps_all_rows() -> None:
     names = [row["name"] for section in output["sections"] for row in section["rows"]]
 
     assert names == ["current-pkg", "minor-behind-pkg", "unchecked-pkg"]
+
+
+def test_render_stale_only_says_when_everything_is_latest() -> None:
+    latest_only = [
+        Section(
+            title="Python (PyPI)",
+            rows=[
+                DepRow(
+                    ecosystem="pypi",
+                    name="current-pkg",
+                    current=Artifact(value="1.2.0"),
+                    latest=Artifact(value="1.2.0"),
+                    state=State.ok,
+                    source="uv.lock",
+                ),
+            ],
+        ),
+    ]
+
+    assert render(latest_only, stale_only=True) == "All dependencies are latest.\n"
