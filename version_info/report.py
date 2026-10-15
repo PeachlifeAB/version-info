@@ -211,7 +211,19 @@ def _render_json(sections: list[Section]) -> str:
     return json.dumps({"sections": out_sections}, indent=2) + "\n"
 
 
-def render(sections: list[Section], json_output: bool = False) -> str:
+def _keep_rows_not_confirmed_latest(sections: list[Section]) -> list[Section]:
+    return [
+        Section(
+            title=section.title,
+            rows=[row for row in section.rows if row.freshness != Freshness.latest],
+        )
+        for section in sections
+    ]
+
+
+def render(sections: list[Section], json_output: bool = False, stale_only: bool = False) -> str:
+    if stale_only:
+        sections = _keep_rows_not_confirmed_latest(sections)
     if json_output:
         return _render_json(sections)
 
