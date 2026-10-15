@@ -4,9 +4,14 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
 from .util_http import get_json
+
+PACKAGE_LOCK_FILENAME = "package-lock.json"
+PNPM_LOCK_FILENAME = "pnpm-lock.yaml"
 
 
 @dataclass(frozen=True)
@@ -78,6 +83,42 @@ def _parse_package_lock(text: str) -> list[NpmDep]:
     ]
 
 
+def _pnpm_direct_dependency_sections(data: dict[str, object]) -> list[dict[str, object]]:
+    importers = data.get("importers")
+    if isinstance(importers, dict):
+        root_importer = importers.get(".")
+        return [root_importer] if isinstance(root_importer, dict) else []
+    return [data]
+
+
+def _parse_pnpm_lock(text: str) -> list[NpmDep]:
+    """Parse direct root dependencies from pnpm-lock.yaml (v6 top-level, v9 importers)."""
+    data = yaml.safe_load(text)
+    if not isinstance(data, dict):
+        return []
+
+    deps: dict[str, str] = {}
+    for section in _pnpm_direct_dependency_sections(data):
+        for key in ("dependencies", "devDependencies"):
+            entries = section.get(key)
+            if not isinstance(entries, dict):
+                continue
+            for name, entry in entries.items():
+                if not isinstance(entry, dict):
+                    continue
+                version = entry.get("version")
+                if not isinstance(version, str):
+                    continue
+                resolved = version.split("(", maxsplit=1)[0]
+                if not resolved or ":" in resolved:
+                    continue
+                deps[str(name)] = resolved
+
+    return [
+        NpmDep(name=n, version=v) for n, v in sorted(deps.items(), key=lambda kv: kv[0].lower())
+    ]
+
+
 def npm_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
     # Unscoped: https://registry.npmjs.org/lodash
     # Scoped:   https://registry.npmjs.org/@types%2Fnode
@@ -102,12 +143,26 @@ def npm_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
     return Artifact(value=None, url=url, note=res.error or "http error"), State.error
 
 
+def _read_npm_lockfile(root: str) -> tuple[str, list[NpmDep]] | None:
+    package_lock_path = Path(root) / PACKAGE_LOCK_FILENAME
+    if package_lock_path.exists():
+        text = package_lock_path.read_text(encoding="utf-8", errors="replace")
+        return PACKAGE_LOCK_FILENAME, _parse_package_lock(text)
+
+    pnpm_lock_path = Path(root) / PNPM_LOCK_FILENAME
+    if pnpm_lock_path.exists():
+        text = pnpm_lock_path.read_text(encoding="utf-8", errors="replace")
+        return PNPM_LOCK_FILENAME, _parse_pnpm_lock(text)
+
+    return None
+
+
 def scan_npm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Section:
-    lock_path = Path(root) / "package-lock.json"
-    if not lock_path.exists():
+    lockfile = _read_npm_lockfile(root)
+    if lockfile is None:
         return Section(title="Node (npm)", rows=[])
 
-    deps = _parse_package_lock(lock_path.read_text(encoding="utf-8", errors="replace"))
+    source, deps = lockfile
 
     def build_row(d: NpmDep) -> DepRow:
         latest, latest_state = npm_latest(d.name, timeout_s=timeout_s)
@@ -124,7 +179,7 @@ def scan_npm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sec
             current=Artifact(value=d.version),
             latest=latest,
             state=state,
-            source="package-lock.json",
+            source=source,
         )
 
     rows = map_bounded_ordered(deps, build_row, max_workers=lookup_concurrency)

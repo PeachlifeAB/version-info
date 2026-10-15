@@ -9,6 +9,7 @@ from .model import DepRow, Section, SourceClass
 from .registry_cargo import scan_cargo
 from .registry_docker import scan_docker
 from .registry_go import scan_go
+from .registry_gradle import scan_gradle
 from .registry_mise import scan_mise
 from .registry_nix import scan_nix
 from .registry_npm import scan_npm
@@ -62,8 +63,15 @@ SCANNERS: tuple[ScannerDef, ...] = (
     ScannerDef(
         name="npm",
         section_title="Node (npm)",
-        markers=("package-lock.json",),
+        markers=("package-lock.json", "pnpm-lock.yaml"),
         scan_fn=scan_npm,
+        source_class=SourceClass.resolved_lockfile,
+    ),
+    ScannerDef(
+        name="gradle",
+        section_title="Java (Gradle)",
+        markers=("gradle.lockfile",),
+        scan_fn=scan_gradle,
         source_class=SourceClass.resolved_lockfile,
     ),
     ScannerDef(
