@@ -13,6 +13,8 @@ from .registry_docker import scan_docker_install_sections
 from .report import ALL_LATEST_MESSAGE, keep_stale_sections, render
 from .scanners import SCANNERS, ScannerDef
 
+DEFAULT_CONCURRENCY = 16
+
 DEFAULT_EXCLUDED_SCAN_DIRS = {
     "__pycache__",
     "build",
@@ -85,8 +87,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument(
         "--concurrency",
         type=int,
-        default=int(os.environ.get("VERSION_INFO_CONCURRENCY", "4")),
-        help="Maximum scanner concurrency (default: 4).",
+        default=int(os.environ.get("VERSION_INFO_CONCURRENCY", str(DEFAULT_CONCURRENCY))),
+        help=f"Maximum concurrent registry lookups (default: {DEFAULT_CONCURRENCY}).",
     )
     return p.parse_args(argv)
 
