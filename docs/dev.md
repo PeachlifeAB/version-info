@@ -1,19 +1,23 @@
-# Developer notes
+## Sync dependencies
 
-Internals and details that the README leaves out.
+```bash
+git clone git@github.com:PeachlifeAB/version-info.git
+cd version-info
+uv sync
+```
 
 ## Development tasks
 
 Tasks run through mise (`mise.toml`):
 
-| Task                   | Runs                                              |
-| ---------------------- | ------------------------------------------------- |
-| `mise run test`        | `pytest`                                          |
-| `mise run lint`        | `ruff check` and `ruff format --check`            |
-| `mise run lint:fix`    | `ruff check --fix` and `ruff format`              |
-| `mise run typecheck`  | `mypy` and `pyright`                              |
-| `mise run lint:all`    | lint, typecheck, deptry, gitleaks                 |
-| `mise run ci`          | lint:all, semgrep, SBOM, test                     |
+| Task                 | Runs                                   |
+| -------------------- | -------------------------------------- |
+| `mise run test`      | `pytest`                               |
+| `mise run lint`      | `ruff check` and `ruff format --check` |
+| `mise run lint:fix`  | `ruff check --fix` and `ruff format`   |
+| `mise run typecheck` | `mypy` and `pyright`                   |
+| `mise run lint:all`  | lint, typecheck, deptry, gitleaks      |
+| `mise run ci`        | lint:all, semgrep, SBOM, test          |
 
 Scanners register in `version_info/scanners.py`. Each scanner has a `detect` marker check and
 a `scan_section` function that returns one `Section`.
@@ -31,6 +35,13 @@ node_modules  references  test  tests  vendor  archived  worktrees
 Sections with the same title are merged. A dependency found in several files keeps one row
 with `source` listing each file and a `+N` suffix when the versions agree. When versions
 differ, every row is kept.
+
+- `CURRENT` and `LATEST` hold version values only.
+- `STATUS` shows `public`, `private`, `local`, `pinned`, `auth`, `rate`, `not found`,
+  `timeout` or `error`. It is omitted when a section has no issues.
+- `SOURCE` names the file that produced the row.
+- Color applies to `CURRENT` only: green is up to date, yellow is minor or patch behind,
+  red is major behind.
 
 ## Direct dependencies only
 
