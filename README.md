@@ -22,13 +22,8 @@ yq      4.53.2     4.53.2    mise.toml
 # Installation
 
 ```bash
-uv install tool git+https://github.com/PeachlifeAB/version-info
-```
-
-# Install uv
-
-```
 curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install git+https://github.com/PeachlifeAB/version-info
 ```
 
 ## Commands

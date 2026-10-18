@@ -7,15 +7,13 @@ can be passed in as build_args to override ARG defaults.
 
 from __future__ import annotations
 
+import io
 import re
 import shlex
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
-try:
-    import dockerfile as _dockerfile_lib
-except ImportError:
-    _dockerfile_lib = None
+from dockerfile_parse import DockerfileParser
 
 from .model import ArtifactAnnotation, InstallPin
 
@@ -57,6 +55,17 @@ _CARGO_VERSION_RE = re.compile(r"(?:--version|-V)\s+([^\s]+)")
 
 # gem install -v / --version
 _GEM_VERSION_RE = re.compile(r"(?:-v|--version)\s+([^\s]+)")
+
+
+class _Instruction(NamedTuple):
+    cmd: str
+    value: tuple[str, ...]
+
+
+def _parse_instructions(path: str) -> list[_Instruction]:
+    text = Path(path).read_text(encoding="utf-8")
+    structure = DockerfileParser(fileobj=io.StringIO(text)).structure
+    return [_Instruction(item["instruction"], (item["value"],)) for item in structure]
 
 
 def _collect_args(cmds: list[Any]) -> dict[str, str]:
@@ -481,14 +490,11 @@ def parse_dockerfile_installs(
 
     Returns list of InstallPin, one per package extracted.
     """
-    if _dockerfile_lib is None:
-        return []
-
     if source is None:
         source = path
 
     try:
-        cmds = _dockerfile_lib.parse_file(path)
+        cmds = _parse_instructions(path)
     except Exception:
         return []
 
