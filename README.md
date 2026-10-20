@@ -65,12 +65,16 @@ Command-line options win over environment variables.
 | Go           | `go.mod`, `go.sum`                                |
 | Rust         | `Cargo.lock`                                      |
 | Ruby         | `Gemfile.lock`                                    |
-| Gradle       | `gradle.lockfile`                                 |
+| Gradle       | `gradle.lockfile`, `gradle/libs.versions.toml`                                 |
 | Nix          | `flake.lock`                                      |
 | SwiftPM      | `Package.resolved`                                |
 | Terraform    | `.terraform.lock.hcl`                             |
 | Tools (mise) | `mise.toml`, `.mise.toml`, `.tool-versions`       |
 
+Gradle catalogs report library versions declared directly or through `version.ref`.
+Maven lookups try Maven Central, then Google Maven on HTTP 404. Catalog and lockfile
+rows remain separate. Plugins, rich version constraints, versionless libraries and
+custom catalog paths are not inventoried.
 Docker image resolution, Dockerfile install detection and scanner internals are described
 in [`docs/dev.md`](docs/dev.md).
 

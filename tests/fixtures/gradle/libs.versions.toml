@@ -1,0 +1,12 @@
+[versions]
+core = "1.17.0"
+
+[libraries]
+core = { module = "androidx.core:core-ktx", version.ref = "core" }
+junit = { group = "junit", name = "junit", version = "4.13.2" }
+annotations = "org.jetbrains:annotations:26.0.2"
+bom-managed = { module = "androidx.compose.ui:ui" }
+missing-ref = { module = "example:missing", version.ref = "missing" }
+
+[plugins]
+android = { id = "com.android.application", version = "8.13.0" }

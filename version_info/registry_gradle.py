@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree
 
-from .model import Artifact, DepRow, Section, State
+from .model import Artifact, DepRow, Section, SourceClass, State
 from .parallel import map_bounded_ordered
 from .util_http import get_text
 
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
+GRADLE_CATALOG_FILENAME = "gradle/libs.versions.toml"
+GOOGLE_MAVEN_BASE_URL = "https://dl.google.com/dl/android/maven2"
 GRADLE_LOCKFILE_FILENAME = "gradle.lockfile"
 MAVEN_CENTRAL_BASE_URL = "https://repo1.maven.org/maven2"
 MAVEN_METADATA_FILENAME = "maven-metadata.xml"
@@ -19,6 +27,8 @@ class GradleDep:
     group: str
     artifact: str
     version: str
+    source: str = GRADLE_LOCKFILE_FILENAME
+    source_class: SourceClass = SourceClass.resolved_lockfile
 
     @property
     def coordinate(self) -> str:
@@ -46,11 +56,55 @@ def _parse_gradle_lockfile(text: str) -> list[GradleDep]:
     return sorted(deps.values(), key=lambda dep: dep.coordinate.lower())
 
 
+def _parse_catalog(text: str) -> list[GradleDep]:
+    catalog = tomllib.loads(text)
+    versions = catalog.get("versions", {})
+    deps: dict[str, GradleDep] = {}
+    group: str | None
+    artifact: str | None
+    version: str | dict[str, str] | None
+    for library in catalog.get("libraries", {}).values():
+        if isinstance(library, str):
+            parts = library.split(":")
+            if len(parts) != 3:
+                continue
+            group, artifact, version = parts
+        elif isinstance(library, dict):
+            module = library.get("module")
+            if isinstance(module, str):
+                parts = module.split(":")
+                if len(parts) != 2:
+                    continue
+                group, artifact = parts
+            else:
+                group, artifact = library.get("group"), library.get("name")
+            version = library.get("version")
+            if isinstance(version, dict):
+                reference = version.get("ref")
+                version = versions.get(reference) if isinstance(reference, str) else None
+        else:
+            continue
+        if not all(isinstance(value, str) and value for value in (group, artifact, version)):
+            continue
+        if isinstance(group, str) and isinstance(artifact, str) and isinstance(version, str):
+            dep = GradleDep(
+                group, artifact, version, GRADLE_CATALOG_FILENAME, SourceClass.declared_manifest
+            )
+            deps.setdefault(dep.coordinate, dep)
+    return sorted(deps.values(), key=lambda dep: dep.coordinate.lower())
+
+
 def maven_latest(group: str, artifact: str, *, timeout_s: float) -> tuple[Artifact, State]:
     # Example: https://repo1.maven.org/maven2/com/google/guava/guava/maven-metadata.xml
     url = f"{MAVEN_CENTRAL_BASE_URL}/{group.replace('.', '/')}/{artifact}/{MAVEN_METADATA_FILENAME}"
 
     res = get_text(url, timeout_s=timeout_s)
+    if res.status == 404:
+        url = (
+            f"{GOOGLE_MAVEN_BASE_URL}/{group.replace('.', '/')}/{artifact}/"
+            f"{MAVEN_METADATA_FILENAME}"
+        )
+        res = get_text(url, timeout_s=timeout_s)
     if res.ok and res.text:
         release = ElementTree.fromstring(res.text).findtext("versioning/release")  # noqa: S314
         if release:
@@ -66,10 +120,12 @@ def maven_latest(group: str, artifact: str, *, timeout_s: float) -> tuple[Artifa
 
 def scan_gradle(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Section:
     lock_path = Path(root) / GRADLE_LOCKFILE_FILENAME
-    if not lock_path.exists():
-        return Section(title="Java (Gradle)", rows=[])
-
-    deps = _parse_gradle_lockfile(lock_path.read_text(encoding="utf-8", errors="replace"))
+    catalog_path = Path(root) / GRADLE_CATALOG_FILENAME
+    deps: list[GradleDep] = []
+    if lock_path.is_file():
+        deps.extend(_parse_gradle_lockfile(lock_path.read_text(encoding="utf-8", errors="replace")))
+    if catalog_path.is_file():
+        deps.extend(_parse_catalog(catalog_path.read_text(encoding="utf-8")))
 
     def build_row(dep: GradleDep) -> DepRow:
         latest, latest_state = maven_latest(dep.group, dep.artifact, timeout_s=timeout_s)
@@ -86,7 +142,8 @@ def scan_gradle(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> 
             current=Artifact(value=dep.version),
             latest=latest,
             state=state,
-            source=GRADLE_LOCKFILE_FILENAME,
+            source=dep.source,
+            source_class=dep.source_class,
         )
 
     rows = map_bounded_ordered(deps, build_row, max_workers=lookup_concurrency)
