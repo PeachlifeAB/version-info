@@ -1,0 +1,141 @@
+{
+	"cases": [
+		{
+			"id": "empty-observation",
+			"ecosystem": "npm",
+			"package": "example",
+			"current": "1.0.0",
+			"reported": null,
+			"candidates": [],
+			"chosen": null,
+			"reasons": []
+		},
+		{
+			"id": "unclassified-only",
+			"ecosystem": "npm",
+			"package": "example",
+			"current": "1.0.0",
+			"reported": "nightly-build",
+			"candidates": [{ "version": "nightly-build" }],
+			"chosen": null,
+			"reasons": ["unclassified"]
+		},
+		{
+			"id": "unclassified-current",
+			"ecosystem": "pypi",
+			"package": "example",
+			"current": "local-reference",
+			"reported": "1.0.0",
+			"candidates": [{ "version": "1.0.0" }],
+			"chosen": null,
+			"reasons": ["current_unclassified"]
+		},
+		{
+			"id": "yanked-retained",
+			"ecosystem": "cargo",
+			"package": "example",
+			"current": "1.0.0",
+			"reported": "2.0.0",
+			"candidates": [
+				{ "version": "2.0.0", "yanked": true },
+				{ "version": "1.5.0" }
+			],
+			"chosen": "1.5.0",
+			"reasons": ["yanked", "selected"]
+		},
+		{
+			"id": "preview-only-stable-current",
+			"ecosystem": "npm",
+			"package": "example",
+			"current": "1.0.0",
+			"reported": "2.0.0-beta.1",
+			"candidates": [{ "version": "2.0.0-beta.1" }],
+			"chosen": "1.0.0",
+			"reasons": ["preview"]
+		},
+		{
+			"id": "terraform-preview-order",
+			"ecosystem": "terraform",
+			"package": "example/library",
+			"current": "5.0.0-alpha",
+			"reported": null,
+			"candidates": [{ "version": "5.1.0-beta" }, { "version": "5.0.0-alpha" }],
+			"chosen": "5.1.0-beta",
+			"reasons": ["selected", "not_newer"]
+		},
+		{
+			"id": "go-beta-update",
+			"ecosystem": "go",
+			"package": "example.org/library",
+			"current": "v2.0.0-beta.74",
+			"reported": "v2.0.0-beta.76",
+			"candidates": [{ "version": "v2.0.0-beta.76" }],
+			"chosen": "v2.0.0-beta.76",
+			"reasons": ["selected"]
+		},
+		{
+			"id": "go-pseudo-update",
+			"ecosystem": "go",
+			"package": "example.org/library",
+			"current": "v0.0.0-20260101000000-abcdefabcdef",
+			"reported": "v0.0.0-20260201000000-fedcbafedcba",
+			"candidates": [{ "version": "v0.0.0-20260201000000-fedcbafedcba" }],
+			"chosen": "v0.0.0-20260201000000-fedcbafedcba",
+			"reasons": ["selected"]
+		},
+		{
+			"id": "ruby-preview-promotion",
+			"ecosystem": "ruby",
+			"package": "example",
+			"current": "1.5.0.beta.1",
+			"reported": "1.5.0",
+			"candidates": [{ "version": "1.5.0.beta.2" }, { "version": "1.5.0" }],
+			"chosen": "1.5.0",
+			"reasons": ["eligible", "selected"]
+		},
+		{
+			"id": "gradle-numeric-order",
+			"ecosystem": "gradle",
+			"package": "example:library",
+			"current": "1.0.0",
+			"reported": null,
+			"candidates": [{ "version": "1.9.0" }, { "version": "1.10.0" }],
+			"chosen": "1.10.0",
+			"reasons": ["eligible", "selected"]
+		},
+		{
+			"id": "gradle-part-order",
+			"ecosystem": "gradle",
+			"package": "example:library",
+			"current": "1.0-dev",
+			"reported": null,
+			"candidates": [
+				{ "version": "1.0-dev" },
+				{ "version": "1.0-alpha" },
+				{ "version": "1.0-zeta" },
+				{ "version": "1.0-rc" },
+				{ "version": "1.0-snapshot" },
+				{ "version": "1.0-final" },
+				{ "version": "1.0-ga" },
+				{ "version": "1.0-release" },
+				{ "version": "1.0-sp" },
+				{ "version": "1.0" },
+				{ "version": "1.0.0" }
+			],
+			"chosen": "1.0.0",
+			"reasons": [
+				"not_newer",
+				"eligible",
+				"eligible",
+				"eligible",
+				"eligible",
+				"eligible",
+				"eligible",
+				"eligible",
+				"eligible",
+				"eligible",
+				"selected"
+			]
+		}
+	]
+}

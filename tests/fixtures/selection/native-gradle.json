@@ -1,0 +1,907 @@
+{
+  "config": {
+    "reference_revision": "e698ff5201cf54060c41a32aa40470be1f6ddc86",
+    "execution_scope": "Direct imports of unchanged Gradle and regex versioning APIs and shared filterVersions; not the complete repository update worker",
+    "environment": {
+      "RENOVATE_X_IGNORE_RE2": "true"
+    },
+    "filter": {
+      "ignoreUnstable": true,
+      "ignoreDeprecated": false,
+      "respectLatest": false,
+      "maxMajorIncrement": null
+    },
+    "compatibility_pattern": "^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(-(?<compatibility>.*))?$",
+    "compatibility_source": "https://github.com/renovatebot/renovate/blob/e698ff5201cf54060c41a32aa40470be1f6ddc86/lib/modules/versioning/regex/readme.md#L18-L28",
+    "compatibility_cases": [
+      "boundary:jre-variant",
+      "boundary:unknown-suffix-retention"
+    ]
+  },
+  "source_hashes": {
+    "lib/modules/versioning/gradle/index.ts": "c865811ad2707e56aea7dcba1157d60acf7b9f0b38b6be0d1c59ac9a3ba059bb",
+    "lib/modules/versioning/gradle/compare.ts": "fc020d6041fb89db812f72a814ae8ed386c15d2b8fe68b70222b944790414cd5",
+    "lib/modules/versioning/regex/index.ts": "835f465275db8ec7d9136daea318e94fa34a810e808b34c3c790bb4f632b79cb",
+    "lib/workers/repository/process/lookup/filter.ts": "d35fdcfa04dc04d671925dd6af25c5f8147b133a2b31ff91f140510c86909c36",
+    "pnpm-lock.yaml": "4c244bd932d5c17aa2e596b8652280f9e0ea329ebd456a050a837171a97d9c8a"
+  },
+  "comparisons": [
+    {
+      "coordinate": "androidx.activity:activity-compose",
+      "engine": "gradle",
+      "current": "1.9.3",
+      "custom_preferred": "1.13.0",
+      "highest_eligible": "1.13.0",
+      "agrees_with_custom_preference": true,
+      "candidate_count": 101,
+      "retained_count": 101,
+      "eligible_count": 9,
+      "eligible_versions": [
+        "1.13.0",
+        "1.12.4",
+        "1.12.3",
+        "1.12.2",
+        "1.12.1",
+        "1.12.0",
+        "1.11.0",
+        "1.10.1",
+        "1.10.0"
+      ],
+      "candidates": [
+        {
+          "version": "1.3.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha04",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha05",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha06",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha07",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-alpha08",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-beta02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0-rc02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.3.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.4.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.4.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.4.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.4.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.4.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-alpha04",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-alpha05",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.5.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0-alpha05",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0-rc02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.6.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-alpha04",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-beta02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.7.2",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha04",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha05",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha06",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-alpha07",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.8.2",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.2",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.9.3",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.10.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.10.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.10.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.10.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.10.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.10.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.10.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.11.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.11.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.11.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.11.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.11.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.12.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha04",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha05",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha06",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha07",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha08",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-alpha09",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-beta01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.12.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.12.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.12.2",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.12.3",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.12.4",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.13.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.13.0-rc01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.13.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.14.0-alpha01",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.14.0-alpha02",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.14.0-alpha03",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:beta-family",
+      "engine": "gradle",
+      "current": "2.4.0-beta1",
+      "custom_preferred": "2.4.0-beta2",
+      "highest_eligible": "2.4.0",
+      "agrees_with_custom_preference": false,
+      "candidate_count": 4,
+      "retained_count": 4,
+      "eligible_count": 2,
+      "eligible_versions": [
+        "2.4.0",
+        "2.4.0-beta2"
+      ],
+      "candidates": [
+        {
+          "version": "2.4.0-beta1",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "2.4.0-beta2",
+          "stable": false,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "2.4.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "2.5.0-alpha1",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:jre-variant",
+      "engine": "gradle",
+      "current": "33.4.0-jre",
+      "custom_preferred": "33.4.1-jre",
+      "highest_eligible": "33.5.0-android",
+      "agrees_with_custom_preference": false,
+      "candidate_count": 3,
+      "retained_count": 3,
+      "eligible_count": 2,
+      "eligible_versions": [
+        "33.5.0-android",
+        "33.4.1-jre"
+      ],
+      "candidates": [
+        {
+          "version": "33.4.0-jre",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "33.4.1-jre",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "33.5.0-android",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:jre-variant",
+      "engine": "explicit-compatibility-regex",
+      "current": "33.4.0-jre",
+      "custom_preferred": "33.4.1-jre",
+      "highest_eligible": "33.4.1-jre",
+      "agrees_with_custom_preference": true,
+      "candidate_count": 3,
+      "retained_count": 3,
+      "eligible_count": 1,
+      "eligible_versions": [
+        "33.4.1-jre"
+      ],
+      "candidates": [
+        {
+          "version": "33.4.0-jre",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "33.4.1-jre",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "33.5.0-android",
+          "stable": true,
+          "compatible": false,
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:preview-graduation",
+      "engine": "gradle",
+      "current": "2.4.0-beta1",
+      "custom_preferred": "2.4.0",
+      "highest_eligible": "2.4.0",
+      "agrees_with_custom_preference": true,
+      "candidate_count": 3,
+      "retained_count": 3,
+      "eligible_count": 1,
+      "eligible_versions": [
+        "2.4.0"
+      ],
+      "candidates": [
+        {
+          "version": "2.3.0-beta9",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "2.4.0-beta1",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "2.4.0",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:stable-alias",
+      "engine": "gradle",
+      "current": "2.4.1",
+      "custom_preferred": "2.4.2.Final",
+      "highest_eligible": "2.4.2.Final",
+      "agrees_with_custom_preference": true,
+      "candidate_count": 3,
+      "retained_count": 3,
+      "eligible_count": 1,
+      "eligible_versions": [
+        "2.4.2.Final"
+      ],
+      "candidates": [
+        {
+          "version": "2.4.1",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "2.4.2.Final",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "2.5.0-alpha1",
+          "stable": false,
+          "compatible": true,
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:unknown-suffix-retention",
+      "engine": "gradle",
+      "current": "1.0.0-custom",
+      "custom_preferred": "1.1.0-custom",
+      "highest_eligible": "1.2.0-other",
+      "agrees_with_custom_preference": false,
+      "candidate_count": 3,
+      "retained_count": 3,
+      "eligible_count": 2,
+      "eligible_versions": [
+        "1.2.0-other",
+        "1.1.0-custom"
+      ],
+      "candidates": [
+        {
+          "version": "1.0.0-custom",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.1.0-custom",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.2.0-other",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "coordinate": "boundary:unknown-suffix-retention",
+      "engine": "explicit-compatibility-regex",
+      "current": "1.0.0-custom",
+      "custom_preferred": "1.1.0-custom",
+      "highest_eligible": "1.1.0-custom",
+      "agrees_with_custom_preference": true,
+      "candidate_count": 3,
+      "retained_count": 3,
+      "eligible_count": 1,
+      "eligible_versions": [
+        "1.1.0-custom"
+      ],
+      "candidates": [
+        {
+          "version": "1.0.0-custom",
+          "stable": true,
+          "compatible": true,
+          "eligible": false
+        },
+        {
+          "version": "1.1.0-custom",
+          "stable": true,
+          "compatible": true,
+          "eligible": true
+        },
+        {
+          "version": "1.2.0-other",
+          "stable": true,
+          "compatible": false,
+          "eligible": false
+        }
+      ]
+    }
+  ]
+}

@@ -384,7 +384,9 @@ def _annotation_current(
     return None
 
 
-def _annotation_latest(ann: ArtifactAnnotation, *, timeout_s: float) -> tuple[Artifact, State]:
+def _annotation_latest(
+    ann: ArtifactAnnotation, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     """Look up the latest version for an annotation from its datasource registry."""
     ds = ann.datasource.lower()
     lookup_map = {
@@ -397,7 +399,7 @@ def _annotation_latest(ann: ArtifactAnnotation, *, timeout_s: float) -> tuple[Ar
     lookup_fn = lookup_map.get(ds)
     if lookup_fn is None:
         return Artifact(value=None, note="unsupported"), State.not_applicable
-    return lookup_fn(ann.dep_name, timeout_s=timeout_s)
+    return lookup_fn(ann.dep_name, timeout_s=timeout_s, current_version=current_version)
 
 
 def _parse_dockerfile_image_lines(
@@ -1103,7 +1105,7 @@ def _build_row_annotated(
 ) -> DepRow:
     df_path = _docker_build_dockerfile_path(root, image)
     current_val = _annotation_current(ann, df_path, image.build_compose_args or {})
-    latest, _ = _annotation_latest(ann, timeout_s=timeout_s)
+    latest, _ = _annotation_latest(ann, timeout_s=timeout_s, current_version=current_val)
     state = State.ok
     freshness = Freshness.not_checked
     if current_val is not None and latest.value is not None:
@@ -1294,7 +1296,9 @@ def _pin_to_dep_row(pin: InstallPin, *, timeout_s: float) -> DepRow:
             freshness=Freshness.not_checked,
         )
 
-    latest, latest_state = lookup_fn(pin.name, timeout_s=timeout_s)
+    latest, latest_state = lookup_fn(
+        pin.name, timeout_s=timeout_s, current_version=pin.resolved_version
+    )
 
     if pin.resolved_version is not None:
         # Exact pin: enable freshness comparison

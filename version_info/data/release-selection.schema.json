@@ -1,0 +1,48 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["current", "reported", "chosen", "complete", "candidates"],
+	"properties": {
+		"current": { "type": ["string", "null"] },
+		"reported": { "type": ["string", "null"] },
+		"chosen": { "type": ["string", "null"] },
+		"complete": { "type": "boolean" },
+		"candidates": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["version", "stage", "eligible", "reason"],
+				"properties": {
+					"version": { "type": "string" },
+					"stage": { "enum": ["stable", "preview", "unclassified"] },
+					"eligible": { "type": "boolean" },
+					"reason": {
+						"enum": [
+							"selected",
+							"eligible",
+							"not_newer",
+							"preview",
+							"preview_line",
+							"incompatible",
+							"yanked",
+							"unclassified",
+							"current_unclassified",
+							"above_registry_channel"
+						]
+					}
+				},
+				"allOf": [
+					{
+						"if": {
+							"properties": { "reason": { "enum": ["selected", "eligible"] } }
+						},
+						"then": { "properties": { "eligible": { "const": true } } },
+						"else": { "properties": { "eligible": { "const": false } } }
+					}
+				]
+			}
+		}
+	}
+}

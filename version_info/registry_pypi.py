@@ -7,6 +7,9 @@ from pathlib import Path
 
 from .model import Artifact, DepRow, Section, SourceClass, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
 
 
@@ -207,7 +210,9 @@ def _parse_poetry_lock(text: str) -> list[PypiDep]:
     return _parse_uv_lock(text)
 
 
-def pypi_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def pypi_latest(
+    name: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     """Fetch the latest version of a package from PyPI.
 
     PyPI JSON API: https://pypi.org/pypi/{package_name}/json
@@ -222,7 +227,30 @@ def pypi_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
         if isinstance(info, dict):
             version = info.get("version")
             if isinstance(version, str) and version:
-                return Artifact(value=version, url=url), State.ok
+                releases = data.get("releases")
+                candidates = []
+                if isinstance(releases, dict):
+                    for release_version, release_files in releases.items():
+                        yanked = (
+                            isinstance(release_files, list)
+                            and bool(release_files)
+                            and all(
+                                isinstance(file, dict) and file.get("yanked") is True
+                                for file in release_files
+                            )
+                        )
+                        candidates.append(ReleaseCandidate(release_version, yanked=yanked))
+                selection = registry_selection(
+                    ecosystem="pypi",
+                    package=normalized_name,
+                    current=current_version,
+                    reported=version,
+                    candidates=candidates or [ReleaseCandidate(version)],
+                    complete=bool(candidates),
+                    url=url,
+                    policy=default_policy(),
+                )
+                return selection.artifact, selection.state
         return Artifact(value=None, url=url, note="no version in response"), State.error
 
     if res.status == 404:
@@ -271,7 +299,9 @@ def scan_pypi(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Se
             latest = Artifact(value=None, note="local")
             state = State.local_only
         else:
-            latest, latest_state = pypi_latest(d.name, timeout_s=timeout_s)
+            latest, latest_state = pypi_latest(
+                d.name, timeout_s=timeout_s, current_version=d.version
+            )
 
             state = State.ok
             if latest.value is not None and latest.value != d.version:

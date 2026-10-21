@@ -7,6 +7,9 @@ from xml.etree import ElementTree
 
 from .model import Artifact, DepRow, Section, SourceClass, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_text
 
 if sys.version_info >= (3, 11):
@@ -94,7 +97,9 @@ def _parse_catalog(text: str) -> list[GradleDep]:
     return sorted(deps.values(), key=lambda dep: dep.coordinate.lower())
 
 
-def maven_latest(group: str, artifact: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def maven_latest(
+    group: str, artifact: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     # Example: https://repo1.maven.org/maven2/com/google/guava/guava/maven-metadata.xml
     url = f"{MAVEN_CENTRAL_BASE_URL}/{group.replace('.', '/')}/{artifact}/{MAVEN_METADATA_FILENAME}"
 
@@ -106,9 +111,25 @@ def maven_latest(group: str, artifact: str, *, timeout_s: float) -> tuple[Artifa
         )
         res = get_text(url, timeout_s=timeout_s)
     if res.ok and res.text:
-        release = ElementTree.fromstring(res.text).findtext("versioning/release")  # noqa: S314
-        if release:
-            return Artifact(value=release, url=url), State.ok
+        metadata = ElementTree.fromstring(res.text)  # noqa: S314
+        release = metadata.findtext("versioning/release")
+        candidates = [
+            ReleaseCandidate(version.text)
+            for version in metadata.findall("versioning/versions/version")
+            if version.text is not None
+        ]
+        if release or candidates:
+            selection = registry_selection(
+                ecosystem="gradle",
+                package=f"{group}:{artifact}",
+                current=current_version,
+                reported=release,
+                candidates=candidates or [ReleaseCandidate(release or "")],
+                complete=bool(candidates),
+                url=url,
+                policy=default_policy(),
+            )
+            return selection.artifact, selection.state
         return Artifact(value=None, url=url, note="no release element"), State.error
 
     if res.status == 404:
@@ -128,7 +149,9 @@ def scan_gradle(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> 
         deps.extend(_parse_catalog(catalog_path.read_text(encoding="utf-8")))
 
     def build_row(dep: GradleDep) -> DepRow:
-        latest, latest_state = maven_latest(dep.group, dep.artifact, timeout_s=timeout_s)
+        latest, latest_state = maven_latest(
+            dep.group, dep.artifact, timeout_s=timeout_s, current_version=dep.version
+        )
 
         state = State.ok
         if latest.value is not None and latest.value != dep.version:

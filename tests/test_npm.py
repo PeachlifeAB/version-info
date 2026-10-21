@@ -363,8 +363,11 @@ def test_scan_npm_uses_bounded_parallel_lookup_and_preserves_order(tmp_path: Pat
     max_active = 0
     lock = threading.Lock()
 
-    def fake_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
+    def fake_latest(
+        name: str, *, timeout_s: float, current_version: str | None = None
+    ) -> tuple[Artifact, State]:
         del timeout_s
+        assert current_version is not None
         nonlocal active, max_active
         with lock:
             active += 1
@@ -372,7 +375,7 @@ def test_scan_npm_uses_bounded_parallel_lookup_and_preserves_order(tmp_path: Pat
         time.sleep(0.02)
         with lock:
             active -= 1
-        return Artifact(value="1.0.0", url=f"https://registry.npmjs.org/{name}"), State.ok
+        return Artifact(value=current_version, url=f"https://registry.npmjs.org/{name}"), State.ok
 
     with patch("version_info.registry_npm.npm_latest", side_effect=fake_latest):
         section = scan_npm(str(tmp_path), timeout_s=10.0, lookup_concurrency=2)

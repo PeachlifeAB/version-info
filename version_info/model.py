@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 
+from .release_models import ReleaseSelection
+
 _VERSION_RE = re.compile(r"^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+][0-9A-Za-z.-]+)?$")
 _HEX_RE = re.compile(r"^(?:sha256:)?(?=[a-f0-9]*[a-f])[a-f0-9]{7,}$")
 
@@ -63,6 +65,7 @@ class Artifact:
     value: str | None
     url: str | None = None
     note: str | None = None
+    selection: ReleaseSelection | None = None
 
 
 @dataclass(frozen=True)

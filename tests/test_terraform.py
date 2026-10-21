@@ -148,8 +148,7 @@ class TestTerraformRegistryLatest:
             )
 
             artifact, state = _terraform_registry_latest("hashicorp", "aws", timeout_s=10.0)
-            # Should use first prerelease as fallback
-            assert artifact.value == "5.0.0-alpha"
+            assert artifact.value == mock_response["versions"][-1]["version"]
             assert state == State.ok
 
     def test_not_found(self) -> None:

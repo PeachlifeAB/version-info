@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import asdict
 
 from tabulate import tabulate
 
@@ -199,6 +200,8 @@ def _render_json(sections: list[Section]) -> str:
                 "source_class": row.source_class.value,
                 "freshness": row.freshness.value,
             }
+            if row.latest.selection is not None:
+                row_data["selection"] = asdict(row.latest.selection)
             if row.note:
                 row_data["note"] = row.note
             if row.current.note and (current_note := _clean_note(row.current.note)):

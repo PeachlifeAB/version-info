@@ -1,0 +1,67 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemes",
+		"same_release_preview",
+		"respect_reported_latest",
+		"gradle",
+		"compatibility"
+	],
+	"properties": {
+		"schemes": {
+			"type": "object",
+			"minProperties": 1,
+			"additionalProperties": { "enum": ["pypi", "semver", "ruby", "gradle"] }
+		},
+		"same_release_preview": {
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "type": "string" }
+		},
+		"respect_reported_latest": {
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "type": "string" }
+		},
+		"gradle": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"valid_pattern",
+				"part_pattern",
+				"unstable",
+				"version_prefix",
+				"qualifier_order"
+			],
+			"properties": {
+				"valid_pattern": { "type": "string", "minLength": 1 },
+				"part_pattern": { "type": "string", "minLength": 1 },
+				"version_prefix": { "type": "string", "minLength": 1, "maxLength": 1 },
+				"unstable": {
+					"type": "array",
+					"uniqueItems": true,
+					"items": { "type": "string" }
+				},
+				"qualifier_order": {
+					"type": "object",
+					"additionalProperties": { "type": "integer" }
+				}
+			}
+		},
+		"compatibility": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["ecosystem", "package", "pattern"],
+				"properties": {
+					"ecosystem": { "type": "string" },
+					"package": { "type": "string" },
+					"pattern": { "type": "string", "minLength": 1 }
+				}
+			}
+		}
+	}
+}

@@ -6,6 +6,9 @@ from pathlib import Path
 
 from .model import Artifact, DepRow, Section, SourceClass, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
 
 
@@ -108,7 +111,9 @@ def _parse_go_mod(text: str) -> list[GoDep]:
     return [GoDep(name=n, version=v) for n, v in sorted(deps.items(), key=lambda kv: kv[0].lower())]
 
 
-def go_proxy_latest(module: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def go_proxy_latest(
+    module: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     """Fetch the latest version of a Go module from proxy.golang.org."""
     url = f"https://proxy.golang.org/{module.replace('/', '%2F')}/@latest"
 
@@ -126,7 +131,17 @@ def go_proxy_latest(module: str, *, timeout_s: float) -> tuple[Artifact, State]:
     if isinstance(data, dict):
         version = data.get("Version")
         if isinstance(version, str) and version:
-            return Artifact(value=version, url=url), State.ok
+            selection = registry_selection(
+                ecosystem="go",
+                package=module,
+                current=current_version,
+                reported=version,
+                candidates=[ReleaseCandidate(version)],
+                complete=False,
+                url=url,
+                policy=default_policy(),
+            )
+            return selection.artifact, selection.state
     return Artifact(value=None, url=url, note="no version in response"), State.error
 
 
@@ -160,7 +175,9 @@ def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sect
         return Section(title="Go", rows=[])
 
     def build_row(d: GoDep) -> DepRow:
-        latest, latest_state = go_proxy_latest(d.name, timeout_s=timeout_s)
+        latest, latest_state = go_proxy_latest(
+            d.name, timeout_s=timeout_s, current_version=d.version
+        )
 
         state = State.ok
         if latest.value is not None and latest.value != d.version:

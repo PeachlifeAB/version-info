@@ -1,28 +1,15 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
-from .versioning import version_sort_key
-
-
-def _find_latest_version(versions: list[dict[str, object]]) -> Iterator[str]:
-    """Generator yielding versions in order from newest to oldest."""
-    # Extract all valid versions
-    valid_versions = []
-    for v in versions:
-        version = v.get("version")
-        if isinstance(version, str) and version:
-            valid_versions.append(version)
-
-    # Sort from newest to oldest
-    valid_versions.sort(key=version_sort_key, reverse=True)
-    return iter(valid_versions)
 
 
 @dataclass(frozen=True)
@@ -93,7 +80,7 @@ def _parse_terraform_lock_hcl(text: str) -> list[TerraformProvider]:
 
 
 def _terraform_registry_latest(
-    namespace: str, provider: str, *, timeout_s: float
+    namespace: str, provider: str, *, timeout_s: float, current_version: str | None = None
 ) -> tuple[Artifact, State]:
     """Fetch the latest version of a Terraform provider from the Terraform Registry."""
     url = f"https://registry.terraform.io/v1/providers/{namespace}/{provider}/versions"
@@ -112,11 +99,22 @@ def _terraform_registry_latest(
     if isinstance(data, dict):
         versions = data.get("versions")
         if isinstance(versions, list) and versions:
-            stable = next((v for v in _find_latest_version(versions) if "-" not in v), None)
-            first = versions[0].get("version") if versions else None
-            chosen = stable or first
-            if chosen:
-                return Artifact(value=chosen, url=url), State.ok
+            candidates = [
+                ReleaseCandidate(version["version"])
+                for version in versions
+                if isinstance(version, dict) and isinstance(version.get("version"), str)
+            ]
+            selection = registry_selection(
+                ecosystem="terraform",
+                package=f"{namespace}/{provider}",
+                current=current_version,
+                reported=None,
+                candidates=candidates,
+                complete=True,
+                url=url,
+                policy=default_policy(),
+            )
+            return selection.artifact, selection.state
     return Artifact(value=None, url=url, note="no versions in response"), State.error
 
 
@@ -132,7 +130,9 @@ def scan_terraform(root: str, *, timeout_s: float, lookup_concurrency: int = 1) 
     providers = _parse_terraform_lock_hcl(lock_path.read_text(encoding="utf-8", errors="replace"))
 
     def build_row(p: TerraformProvider) -> DepRow:
-        latest, latest_state = _terraform_registry_latest(p.namespace, p.name, timeout_s=timeout_s)
+        latest, latest_state = _terraform_registry_latest(
+            p.namespace, p.name, timeout_s=timeout_s, current_version=p.version
+        )
 
         state = State.ok
         if latest.value is not None and latest.value != p.version:

@@ -8,6 +8,9 @@ import yaml
 
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
 
 PACKAGE_LOCK_FILENAME = "package-lock.json"
@@ -119,7 +122,9 @@ def _parse_pnpm_lock(text: str) -> list[NpmDep]:
     ]
 
 
-def npm_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def npm_latest(
+    name: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     # Unscoped: https://registry.npmjs.org/lodash
     # Scoped:   https://registry.npmjs.org/@types%2Fnode
     encoded = name.replace("/", "%2F")
@@ -131,7 +136,23 @@ def npm_latest(name: str, *, timeout_s: float) -> tuple[Artifact, State]:
         if isinstance(dist_tags, dict):
             latest = dist_tags.get("latest")
             if isinstance(latest, str) and latest:
-                return Artifact(value=latest, url=url), State.ok
+                versions = data.get("versions")
+                candidates = (
+                    [ReleaseCandidate(version) for version in versions]
+                    if isinstance(versions, dict)
+                    else []
+                )
+                selection = registry_selection(
+                    ecosystem="npm",
+                    package=name,
+                    current=current_version,
+                    reported=latest,
+                    candidates=candidates or [ReleaseCandidate(latest)],
+                    complete=bool(candidates),
+                    url=url,
+                    policy=default_policy(),
+                )
+                return selection.artifact, selection.state
         return Artifact(value=None, url=url, note="no dist-tag latest"), State.error
 
     if res.status == 404:
@@ -165,7 +186,7 @@ def scan_npm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sec
     source, deps = lockfile
 
     def build_row(d: NpmDep) -> DepRow:
-        latest, latest_state = npm_latest(d.name, timeout_s=timeout_s)
+        latest, latest_state = npm_latest(d.name, timeout_s=timeout_s, current_version=d.version)
 
         state = State.ok
         if latest.value is not None and latest.value != d.version:

@@ -1,0 +1,12 @@
+{
+  "coordinate": "androidx.activity:activity-compose",
+  "current": "1.9.3",
+  "reported": "1.14.0-alpha03",
+  "preferred": "1.13.0",
+  "central_url": "https://repo1.maven.org/maven2/androidx/activity/activity-compose/maven-metadata.xml",
+  "google_url": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/maven-metadata.xml",
+  "source_repository": "https://github.com/android/nowinandroid",
+  "source_revision": "a49ed253d75e61a2b6ab80a8da677b57437b08eb",
+  "source_path": "gradle/libs.versions.toml",
+  "captured_at_utc": "2026-10-20T22:53:13Z"
+}

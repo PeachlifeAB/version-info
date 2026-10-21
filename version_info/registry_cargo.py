@@ -6,6 +6,9 @@ from pathlib import Path
 
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
 
 
@@ -113,7 +116,9 @@ def _parse_cargo_toml_direct(text: str) -> set[str]:
     return direct
 
 
-def crates_io_latest(crate: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def crates_io_latest(
+    crate: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     """Fetch the latest version of a crate from crates.io.
 
     crates.io API: https://crates.io/api/v1/crates/{crate}
@@ -127,7 +132,32 @@ def crates_io_latest(crate: str, *, timeout_s: float) -> tuple[Artifact, State]:
         if isinstance(crate_info, dict):
             max_version = crate_info.get("max_version")
             if isinstance(max_version, str) and max_version:
-                return Artifact(value=max_version, url=url), State.ok
+                versions = data.get("versions")
+                candidates = []
+                if isinstance(versions, list):
+                    candidates = [
+                        ReleaseCandidate(version["num"], yanked=version.get("yanked") is True)
+                        for version in versions
+                        if isinstance(version, dict) and isinstance(version.get("num"), str)
+                    ]
+                complete = bool(candidates)
+                if not candidates:
+                    candidates = [
+                        ReleaseCandidate(value)
+                        for field in ("max_version", "max_stable_version")
+                        if isinstance(value := crate_info.get(field), str) and value
+                    ]
+                selection = registry_selection(
+                    ecosystem="cargo",
+                    package=crate,
+                    current=current_version,
+                    reported=max_version,
+                    candidates=candidates,
+                    complete=complete,
+                    url=url,
+                    policy=default_policy(),
+                )
+                return selection.artifact, selection.state
         return Artifact(value=None, url=url, note="no max_version in response"), State.error
 
     if res.status == 404:
@@ -158,7 +188,9 @@ def scan_cargo(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> S
             deps = [d for d in deps if d.name in direct]
 
     def build_row(d: CargoDep) -> DepRow:
-        latest, latest_state = crates_io_latest(d.name, timeout_s=timeout_s)
+        latest, latest_state = crates_io_latest(
+            d.name, timeout_s=timeout_s, current_version=d.version
+        )
 
         state = State.ok
         if latest.value is not None and latest.value != d.version:

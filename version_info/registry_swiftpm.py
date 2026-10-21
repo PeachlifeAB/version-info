@@ -10,6 +10,9 @@ from urllib.parse import quote
 
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
 
 
@@ -94,7 +97,9 @@ def _parse_package_resolved(text: str) -> list[SwiftPMDep]:
     return [deps[name] for name in sorted(deps.keys(), key=lambda k: k.lower())]
 
 
-def _github_latest_tag(repo_url: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def _github_latest_tag(
+    repo_url: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     """Fetch the latest semver tag from a GitHub repository via the tags API."""
     match = re.search(r"github\.com[:/]([^/]+)/([^/.]+)", repo_url)
     if not match:
@@ -114,13 +119,38 @@ def _github_latest_tag(repo_url: str, *, timeout_s: float) -> tuple[Artifact, St
         return Artifact(value=None, url=url, note=note), state
 
     tags_url = f"https://github.com/{owner}/{repo}/tags"
-    for tag in data if isinstance(data, list) else []:
-        if not isinstance(tag, dict):
-            continue
-        tag_name = tag.get("name")
-        if isinstance(tag_name, str) and re.match(r"^v?\d+\.\d+", tag_name):
-            return Artifact(value=tag_name.lstrip("v"), url=tags_url), State.ok
-    return Artifact(value=None, url=url, note="no version tags found"), State.error
+    candidates = (
+        [
+            ReleaseCandidate(tag["name"])
+            for tag in data
+            if isinstance(tag, dict) and isinstance(tag.get("name"), str)
+        ]
+        if isinstance(data, list)
+        else []
+    )
+    missing_tags_note = "no version tags found"
+    if not candidates:
+        return Artifact(value=None, url=url, note=missing_tags_note), State.error
+    selection = registry_selection(
+        ecosystem="swiftpm",
+        package=repo_url,
+        current=current_version,
+        reported=candidates[0].version,
+        candidates=candidates,
+        complete=False,
+        url=tags_url,
+        policy=default_policy(),
+    )
+    artifact = selection.artifact
+    if artifact.value is None:
+        return Artifact(
+            value=None, url=url, note=missing_tags_note, selection=artifact.selection
+        ), selection.state
+    if artifact.value != current_version:
+        artifact = Artifact(
+            value=artifact.value.removeprefix("v"), url=tags_url, selection=artifact.selection
+        )
+    return artifact, selection.state
 
 
 def scan_swiftpm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Section:
@@ -144,7 +174,9 @@ def scan_swiftpm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) ->
     deps = _parse_package_resolved(resolved_path.read_text(encoding="utf-8", errors="replace"))
 
     def build_row(d: SwiftPMDep) -> DepRow:
-        latest, latest_state = _github_latest_tag(d.location, timeout_s=timeout_s)
+        latest, latest_state = _github_latest_tag(
+            d.location, timeout_s=timeout_s, current_version=d.version
+        )
 
         state = State.ok
         if latest.value is not None and latest.value != d.version:

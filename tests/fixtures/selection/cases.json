@@ -1,0 +1,186 @@
+{
+	"fixture_kind": "Synthetic adapter contracts; not captured published releases",
+	"cases": [
+		{
+			"id": "pypi-stable",
+			"ecosystem": "pypi",
+			"path": "uv.lock",
+			"project": "[[package]]\nname = \"example\"\nversion = \"1.0.0\"\n",
+			"payload": {
+				"info": { "version": "2.0.0rc1" },
+				"releases": { "1.0.0": [], "1.5.0": [], "2.0.0rc1": [] }
+			},
+			"expected": "1.5.0",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "pypi-graduation",
+			"ecosystem": "pypi",
+			"path": "uv.lock",
+			"project": "[[package]]\nname = \"example\"\nversion = \"1.5.0rc1\"\n",
+			"payload": {
+				"info": { "version": "1.5.0" },
+				"releases": { "1.5.0rc1": [], "1.5.0rc2": [], "1.5.0": [] }
+			},
+			"expected": "1.5.0",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "pypi-beta-updates",
+			"ecosystem": "pypi",
+			"path": "uv.lock",
+			"project": "[[package]]\nname = \"example\"\nversion = \"1.41.0b0\"\n",
+			"payload": {
+				"info": { "version": "1.45.0b0" },
+				"releases": { "1.41.0b0": [], "1.45.0b0": [] }
+			},
+			"expected": "1.45.0b0",
+			"candidate_count": 2,
+			"complete": true
+		},
+		{
+			"id": "npm-channel",
+			"ecosystem": "npm",
+			"path": "package-lock.json",
+			"project": "{\"lockfileVersion\":3,\"packages\":{\"node_modules/example\":{\"version\":\"1.0.0\"}}}",
+			"payload": {
+				"dist-tags": { "latest": "1.5.0", "next": "2.0.0" },
+				"versions": {
+					"1.0.0": {},
+					"1.5.0": {},
+					"2.0.0": {},
+					"2.1.0-beta.1": {},
+					"unclassified-tag": {}
+				}
+			},
+			"expected": "1.5.0",
+			"candidate_count": 5,
+			"complete": true
+		},
+		{
+			"id": "cargo-stable",
+			"ecosystem": "cargo",
+			"path": "Cargo.lock",
+			"project": "[[package]]\nname = \"example\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\n",
+			"payload": {
+				"crate": {
+					"max_version": "2.0.0-beta.1",
+					"max_stable_version": "1.5.0"
+				},
+				"versions": [
+					{ "num": "1.0.0" },
+					{ "num": "1.5.0" },
+					{ "num": "2.0.0-beta.1" }
+				]
+			},
+			"expected": "1.5.0",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "cargo-partial",
+			"ecosystem": "cargo",
+			"path": "Cargo.lock",
+			"project": "[[package]]\nname = \"example\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\n",
+			"payload": {
+				"crate": {
+					"max_version": "2.0.0-beta.1",
+					"max_stable_version": "1.5.0"
+				}
+			},
+			"expected": "1.5.0",
+			"candidate_count": 2,
+			"complete": false
+		},
+		{
+			"id": "cargo-graduation",
+			"ecosystem": "cargo",
+			"path": "Cargo.lock",
+			"project": "[[package]]\nname = \"example\"\nversion = \"1.5.0-beta.1\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\n",
+			"payload": {
+				"crate": { "max_version": "1.5.0" },
+				"versions": [
+					{ "num": "1.5.0-beta.1" },
+					{ "num": "1.5.0-beta.2" },
+					{ "num": "1.5.0" }
+				]
+			},
+			"expected": "1.5.0",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "gradle-stable",
+			"ecosystem": "gradle",
+			"path": "gradle.lockfile",
+			"project": "example:library:1.0.0=runtimeClasspath\n",
+			"payload": "<metadata><versioning><release>2.0.0-alpha1</release><versions><version>1.0.0</version><version>1.5.0</version><version>2.0.0-alpha1</version></versions></versioning></metadata>",
+			"expected": "1.5.0",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "gradle-compatibility",
+			"ecosystem": "gradle",
+			"path": "gradle.lockfile",
+			"project": "com.google.guava:guava:33.4.0-jre=runtimeClasspath\n",
+			"payload": "<metadata><versioning><release>33.5.0-android</release><versions><version>33.4.0-jre</version><version>33.4.1-jre</version><version>33.5.0-android</version></versions></versioning></metadata>",
+			"expected": "33.4.1-jre",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "terraform-stable",
+			"ecosystem": "terraform",
+			"path": ".terraform.lock.hcl",
+			"project": "provider \"registry.terraform.io/example/library\" {\n  version = \"1.0.0\"\n}\n",
+			"payload": {
+				"versions": [
+					{ "version": "2.0.0-beta.1" },
+					{ "version": "1.4.0" },
+					{ "version": "1.5.0" }
+				]
+			},
+			"expected": "1.5.0",
+			"candidate_count": 3,
+			"complete": true
+		},
+		{
+			"id": "swiftpm-tag-order",
+			"ecosystem": "swiftpm",
+			"path": "Package.resolved",
+			"project": "{\"version\":2,\"pins\":[{\"identity\":\"example\",\"kind\":\"remoteSourceControl\",\"location\":\"https://github.com/example/library.git\",\"state\":{\"version\":\"1.0.0\"}}]}",
+			"payload": [
+				{ "name": "v2.0.0-beta.1" },
+				{ "name": "v1.4.0" },
+				{ "name": "v1.5.0" },
+				{ "name": "nightly-unclassified" }
+			],
+			"expected": "1.5.0",
+			"candidate_count": 4,
+			"complete": false
+		},
+		{
+			"id": "go-no-downgrade",
+			"ecosystem": "go",
+			"path": "go.mod",
+			"project": "module example.org/app\n\ngo 1.22\n\nrequire example.org/library v2.0.0\n",
+			"payload": { "Version": "v1.0.0" },
+			"expected": "v2.0.0",
+			"candidate_count": 1,
+			"complete": false
+		},
+		{
+			"id": "ruby-no-downgrade",
+			"ecosystem": "ruby",
+			"path": "Gemfile.lock",
+			"project": "GEM\n  specs:\n    example (2.0.0)\n\nPLATFORMS\n  ruby\n\nDEPENDENCIES\n  example\n",
+			"payload": { "version": "1.0.0" },
+			"expected": "2.0.0",
+			"candidate_count": 1,
+			"complete": false
+		}
+	]
+}

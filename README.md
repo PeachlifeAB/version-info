@@ -65,7 +65,7 @@ Command-line options win over environment variables.
 | Go           | `go.mod`, `go.sum`                                |
 | Rust         | `Cargo.lock`                                      |
 | Ruby         | `Gemfile.lock`                                    |
-| Gradle       | `gradle.lockfile`, `gradle/libs.versions.toml`                                 |
+| Gradle       | `gradle.lockfile`, `gradle/libs.versions.toml`    |
 | Nix          | `flake.lock`                                      |
 | SwiftPM      | `Package.resolved`                                |
 | Terraform    | `.terraform.lock.hcl`                             |
@@ -77,6 +77,17 @@ rows remain separate. Plugins, rich version constraints, versionless libraries a
 custom catalog paths are not inventoried.
 Docker image resolution, Dockerfile install detection and scanner internals are described
 in [`docs/dev.md`](docs/dev.md).
+
+## Release selection
+
+Stable dependencies prefer stable updates; previews can graduate to final releases.
+Configured compatibility rules keep Guava variants separate. Docker, mise and Nix
+retain their backend-specific selection.
+
+JSON rows include `selection` when candidate metadata is available. Its `candidates`
+retain original versions with stage, eligibility and reason. `complete` distinguishes
+full version collections from selected-release responses or partial tag pages.
+See the [selection schema](version_info/data/release-selection.schema.json).
 
 ## License
 

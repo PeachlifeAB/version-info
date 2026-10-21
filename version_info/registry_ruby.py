@@ -6,6 +6,9 @@ from pathlib import Path
 
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
+from .release_models import ReleaseCandidate
+from .release_policy import default_policy
+from .release_selection import registry_selection
 from .util_http import get_json
 
 
@@ -66,7 +69,9 @@ def _parse_gemfile_lock(text: str) -> list[RubyGem]:
     ]
 
 
-def rubygems_org_latest(gem: str, *, timeout_s: float) -> tuple[Artifact, State]:
+def rubygems_org_latest(
+    gem: str, *, timeout_s: float, current_version: str | None = None
+) -> tuple[Artifact, State]:
     """Fetch the latest version of a gem from rubygems.org.
 
     RubyGems API: https://rubygems.org/api/v1/gems/{gem}.json
@@ -78,7 +83,17 @@ def rubygems_org_latest(gem: str, *, timeout_s: float) -> tuple[Artifact, State]
     if res.ok and isinstance(data, dict):
         version = data.get("version")
         if isinstance(version, str) and version:
-            return Artifact(value=version, url=url), State.ok
+            selection = registry_selection(
+                ecosystem="ruby",
+                package=gem,
+                current=current_version,
+                reported=version,
+                candidates=[ReleaseCandidate(version)],
+                complete=False,
+                url=url,
+                policy=default_policy(),
+            )
+            return selection.artifact, selection.state
         return Artifact(value=None, url=url, note="no version in response"), State.error
 
     if res.status == 404:
@@ -102,7 +117,9 @@ def scan_ruby(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Se
     gems = _parse_gemfile_lock(lock_path.read_text(encoding="utf-8", errors="replace"))
 
     def build_row(g: RubyGem) -> DepRow:
-        latest, latest_state = rubygems_org_latest(g.name, timeout_s=timeout_s)
+        latest, latest_state = rubygems_org_latest(
+            g.name, timeout_s=timeout_s, current_version=g.version
+        )
 
         state = State.ok
         if latest.value is not None and latest.value != g.version:

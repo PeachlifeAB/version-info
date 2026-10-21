@@ -1,0 +1,750 @@
+{
+	"reference_revision": "e698ff5201cf54060c41a32aa40470be1f6ddc86",
+	"source_hashes": {
+		"index.spec.ts": "a6e4eded6b52ca03bca6040bb8f684b9f12815d8b5c4790c3b200628c9f9924a",
+		"index.ts": "c865811ad2707e56aea7dcba1157d60acf7b9f0b38b6be0d1c59ac9a3ba059bb",
+		"compare.ts": "fc020d6041fb89db812f72a814ae8ed386c15d2b8fe68b70222b944790414cd5"
+	},
+	"comparisons": [
+		{
+			"left": "1",
+			"right": "1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "a",
+			"right": "a",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1a1",
+			"right": "1.a.1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1a1",
+			"right": "1-a-1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1a1",
+			"right": "1_a_1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1a1",
+			"right": "1+a+1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1.a.1",
+			"right": "1a1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1-a-1",
+			"right": "1a1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1_a_1",
+			"right": "1a1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1+a+1",
+			"right": "1a1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1.a.1",
+			"right": "1-a+1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1-a+1",
+			"right": "1.a-1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1.a-1",
+			"right": "1a1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "dev",
+			"right": "dev",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "rc",
+			"right": "rc",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "preview",
+			"right": "preview",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "release",
+			"right": "release",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "final",
+			"right": "final",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "snapshot",
+			"right": "SNAPSHOT",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "SNAPSHOT",
+			"right": "snapshot",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "Hoxton.SR1",
+			"right": "Hoxton.sr-1",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "1.1",
+			"right": "1.2",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.a",
+			"right": "1.1",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.A",
+			"right": "1.B",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.B",
+			"right": "1.a",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.a",
+			"right": "1.b",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.1",
+			"right": "1.1.0",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.1.a",
+			"right": "1.1",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-dev",
+			"right": "1.0-alpha",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-alpha",
+			"right": "1.0-rc",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-zeta",
+			"right": "1.0-rc",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-rc",
+			"right": "1.0-final",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-final",
+			"right": "1.0-ga",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-ga",
+			"right": "1.0-release",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-rc",
+			"right": "1.0-release",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-final",
+			"right": "1.0",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-alpha",
+			"right": "1.0-SNAPSHOT",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-zeta",
+			"right": "1.0-SNAPSHOT",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-zeta",
+			"right": "1.0-rc",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-rc",
+			"right": "1.0",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-preview",
+			"right": "1.0",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0",
+			"right": "1.0-20150201.121010-123",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-20150201.121010-123",
+			"right": "1.1",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "Hoxton.RELEASE",
+			"right": "Hoxton.SR1",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-release",
+			"right": "1.0-sp-1",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.0-sp-1",
+			"right": "1.0-sp-2",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "1.2",
+			"right": "1.1",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.1",
+			"right": "1.1.a",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.B",
+			"right": "1.A",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.a",
+			"right": "1.B",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.b",
+			"right": "1.a",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.1.0",
+			"right": "1.1",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.1",
+			"right": "1.a",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-alpha",
+			"right": "1.0-dev",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-rc",
+			"right": "1.0-alpha",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-rc",
+			"right": "1.0-zeta",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-release",
+			"right": "1.0-rc",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-final",
+			"right": "1.0-rc",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-ga",
+			"right": "1.0-final",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-release",
+			"right": "1.0-ga",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-release",
+			"right": "1.0-final",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0",
+			"right": "1.0-final",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-SNAPSHOT",
+			"right": "1.0-alpha",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-SNAPSHOT",
+			"right": "1.0-zeta",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-rc",
+			"right": "1.0-zeta",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0",
+			"right": "1.0-rc",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0",
+			"right": "1.0-preview",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-20150201.121010-123",
+			"right": "1.0",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.1",
+			"right": "1.0-20150201.121010-123",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "Hoxton.SR1",
+			"right": "Hoxton.RELEASE",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-sp-1",
+			"right": "1.0-release",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "1.0-sp-2",
+			"right": "1.0-sp-1",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "",
+			"right": "",
+			"expected": 0,
+			"valid": false
+		},
+		{
+			"left": "384.vf35b_f26814ec",
+			"right": "400.v35420b_922dcb_",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "2026051723231779060202",
+			"right": "2026051723231779060202",
+			"expected": 0,
+			"valid": true
+		},
+		{
+			"left": "2026051723231779060202",
+			"right": "2026051723231779060208",
+			"expected": -1,
+			"valid": true
+		},
+		{
+			"left": "2026051723231779060208",
+			"right": "2026051723231779060202",
+			"expected": 1,
+			"valid": true
+		},
+		{
+			"left": "___",
+			"right": "...",
+			"expected": 0,
+			"valid": false
+		}
+	],
+	"validity": [
+		{
+			"version": "",
+			"expected": false
+		},
+		{
+			"version": "latest.integration",
+			"expected": false
+		},
+		{
+			"version": "latest.release",
+			"expected": false
+		},
+		{
+			"version": "latest",
+			"expected": false
+		},
+		{
+			"version": "1",
+			"expected": true
+		},
+		{
+			"version": "a",
+			"expected": true
+		},
+		{
+			"version": "A",
+			"expected": true
+		},
+		{
+			"version": "1a1",
+			"expected": true
+		},
+		{
+			"version": "1.a.1",
+			"expected": true
+		},
+		{
+			"version": "1-a-1",
+			"expected": true
+		},
+		{
+			"version": "1_a_1",
+			"expected": true
+		},
+		{
+			"version": "1+a+1",
+			"expected": true
+		},
+		{
+			"version": "1!a!1",
+			"expected": false
+		},
+		{
+			"version": "1.0-20150201.121010-123",
+			"expected": true
+		},
+		{
+			"version": "dev",
+			"expected": true
+		},
+		{
+			"version": "rc",
+			"expected": true
+		},
+		{
+			"version": "release",
+			"expected": true
+		},
+		{
+			"version": "final",
+			"expected": true
+		},
+		{
+			"version": "SNAPSHOT",
+			"expected": true
+		},
+		{
+			"version": "1.2",
+			"expected": true
+		},
+		{
+			"version": "1..2",
+			"expected": false
+		},
+		{
+			"version": "1++2",
+			"expected": false
+		},
+		{
+			"version": "1--2",
+			"expected": false
+		},
+		{
+			"version": "1__2",
+			"expected": false
+		},
+		{
+			"version": "400.v35420b_922dcb_",
+			"expected": true
+		},
+		{
+			"version": "400.v35420b_922dcb",
+			"expected": true
+		},
+		{
+			"version": "__",
+			"expected": false
+		},
+		{
+			"version": "_.",
+			"expected": false
+		},
+		{
+			"version": "._",
+			"expected": false
+		},
+		{
+			"version": "_+",
+			"expected": false
+		},
+		{
+			"version": "+.",
+			"expected": false
+		},
+		{
+			"version": ".+",
+			"expected": false
+		}
+	],
+	"stability": [
+		{
+			"version": "",
+			"expected": false,
+			"valid": false
+		},
+		{
+			"version": "latest",
+			"expected": false,
+			"valid": false
+		},
+		{
+			"version": "foobar",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "final",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1..2",
+			"expected": false,
+			"valid": false
+		},
+		{
+			"version": "1.2",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.2.3",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.2.3.4 s",
+			"expected": false,
+			"valid": false
+		},
+		{
+			"version": "1.2.3.4",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "v1.2.3.4",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1-alpha-1",
+			"expected": false,
+			"valid": true
+		},
+		{
+			"version": "1-b1",
+			"expected": false,
+			"valid": true
+		},
+		{
+			"version": "1-foo",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1-final-1.0.0",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1-release",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.final",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.0milestone1",
+			"expected": false,
+			"valid": true
+		},
+		{
+			"version": "1-sp",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1-ga-1",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.3-groovy-2.5",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.3-RC1-groovy-2.5",
+			"expected": false,
+			"valid": true
+		},
+		{
+			"version": "1-preview",
+			"expected": false,
+			"valid": true
+		},
+		{
+			"version": "Hoxton.RELEASE",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "Hoxton.SR",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "Hoxton.SR1",
+			"expected": true,
+			"valid": true
+		},
+		{
+			"version": "1.3.5-native-mt-1.3.71-release-429",
+			"expected": false,
+			"valid": true
+		},
+		{
+			"version": "1.0-dev",
+			"expected": false,
+			"valid": true
+		}
+	]
+}
