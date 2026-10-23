@@ -11,6 +11,7 @@ from .parallel import map_bounded_ordered
 from .release_models import ReleaseCandidate
 from .release_policy import default_policy
 from .release_selection import registry_selection
+from .release_versions import compare_releases
 from .util_http import get_json
 
 PACKAGE_LOCK_FILENAME = "package-lock.json"
@@ -136,6 +137,14 @@ def npm_latest(
         if isinstance(dist_tags, dict):
             latest = dist_tags.get("latest")
             if isinstance(latest, str) and latest:
+                policy = default_policy()
+                stable = dist_tags.get("stable")
+                if isinstance(stable, str):
+                    try:
+                        if compare_releases(stable, latest, "npm", policy) > 0:
+                            latest = stable
+                    except ValueError:
+                        pass
                 versions = data.get("versions")
                 candidates = (
                     [ReleaseCandidate(version) for version in versions]
@@ -150,7 +159,7 @@ def npm_latest(
                     candidates=candidates or [ReleaseCandidate(latest)],
                     complete=bool(candidates),
                     url=url,
-                    policy=default_policy(),
+                    policy=policy,
                 )
                 return selection.artifact, selection.state
         return Artifact(value=None, url=url, note="no dist-tag latest"), State.error

@@ -87,6 +87,8 @@ in [`docs/dev.md`](docs/dev.md).
 Stable dependencies prefer stable updates; previews can graduate to final releases.
 Configured compatibility rules keep Guava variants separate. Docker, mise and Nix
 retain their backend-specific selection.
+npm compares the `latest` and `stable` tags and uses the higher semantic version
+as its reported channel target. Missing or invalid `stable` retains `latest`.
 
 JSON rows include `selection` when candidate metadata is available. Its `candidates`
 retain original versions with stage, eligibility and reason. `complete` distinguishes

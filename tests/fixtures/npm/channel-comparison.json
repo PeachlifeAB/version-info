@@ -1,0 +1,51 @@
+[
+	{
+		"name": "higher-stable",
+		"latest": "2.9.0",
+		"stable": "2.10.0",
+		"expected": "2.10.0"
+	},
+	{
+		"name": "older-stable",
+		"latest": "2.10.0",
+		"stable": "2.9.0",
+		"expected": "2.10.0"
+	},
+	{
+		"name": "equal",
+		"latest": "2.10.0",
+		"stable": "2.10.0",
+		"expected": "2.10.0"
+	},
+	{ "name": "missing-stable", "latest": "2.10.0", "expected": "2.10.0" },
+	{
+		"name": "empty-stable",
+		"latest": "2.10.0",
+		"stable": "",
+		"expected": "2.10.0"
+	},
+	{
+		"name": "invalid-stable",
+		"latest": "2.10.0",
+		"stable": "not-a-version",
+		"expected": "2.10.0"
+	},
+	{
+		"name": "null-stable",
+		"latest": "2.10.0",
+		"stable": null,
+		"expected": "2.10.0"
+	},
+	{
+		"name": "numeric-stable",
+		"latest": "2.10.0",
+		"stable": 42,
+		"expected": "2.10.0"
+	},
+	{
+		"name": "build-metadata-tie",
+		"latest": "2.10.0+latest",
+		"stable": "2.10.0+stable",
+		"expected": "2.10.0+latest"
+	}
+]
