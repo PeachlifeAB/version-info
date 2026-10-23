@@ -386,8 +386,7 @@ def test_cli_detector_first_skips_absent_scanners(tmp_path: Path, monkeypatch) -
     assert calls == ["present"]
 
 
-def test_cli_scanner_exception_does_not_abort_scan(tmp_path: Path, monkeypatch) -> None:
-    """Verify one broken scanner does not block later scanners."""
+def test_cli_scanner_exception_returns_failure(tmp_path: Path, monkeypatch) -> None:
     present_called = False
 
     def scan_broken(root: str, *, timeout_s: float) -> Section:
@@ -415,7 +414,7 @@ def test_cli_scanner_exception_does_not_abort_scan(tmp_path: Path, monkeypatch) 
 
     monkeypatch.setattr(cli_main, "SCANNERS", (broken, present))
 
-    assert cli_main.main([str(tmp_path)]) == 0
+    assert cli_main.main([str(tmp_path)]) == 1
     assert present_called
 
 

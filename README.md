@@ -50,6 +50,9 @@ Unclassifiable versions remain visible unless `--stale` excludes them.
 
 ## Scripting
 
+Scanner exceptions exit nonzero with a diagnostic. An incomplete scan does not
+write or remove the output file and does not claim dependencies are current.
+
 ```bash
 version-info . --json | jq -r '.sections[].rows[] | select(.state == "update_available") | .name'
 version-info . --stale --json -o stale.json

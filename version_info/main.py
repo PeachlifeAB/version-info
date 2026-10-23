@@ -3,15 +3,17 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import __version__
-from .model import DepRow, Section
+from .model import Section
 from .registry_docker import scan_docker_install_sections
 from .report import ALL_LATEST_MESSAGE, filter_sections, render
 from .scanners import SCANNERS, ScannerDef
+from .section_merging import merge_sections as _merge_sections
 
 DEFAULT_CONCURRENCY = 16
 
@@ -116,7 +118,7 @@ def _get_scan_paths(root: str) -> list[str]:
 
 
 def _scan_one(
-    scanner: ScannerDef, path: str, *, timeout_s: float, verbose: bool, lookup_concurrency: int
+    scanner: ScannerDef, path: str, *, timeout_s: float, lookup_concurrency: int
 ) -> Section | None:
     try:
         section = scanner.scan_section(
@@ -124,30 +126,22 @@ def _scan_one(
             timeout_s=timeout_s,
             lookup_concurrency=lookup_concurrency,
         )
-    except Exception as e:
-        if verbose:
-            scanner_type = scanner.__class__.__name__
-            print(f"{scanner_type}({scanner.name}) failed for {path}: {e}", file=sys.stderr)
-        return None
+    except Exception as error:
+        raise RuntimeError(f"{scanner.name} scan failed for {path}: {error}") from error
     if section.rows:
         return section
     return None
 
 
-def _scan_path(
-    path: str, *, timeout_s: float, verbose: bool = False, concurrency: int = 4
-) -> list[Section]:
+def _scan_path(path: str, *, timeout_s: float, concurrency: int = 4) -> list[Section]:
     detected: list[ScannerDef] = []
     for scanner in SCANNERS:
         try:
             if not scanner.detect(path):
                 continue
             detected.append(scanner)
-        except Exception as e:
-            if verbose:
-                scanner_type = scanner.__class__.__name__
-                print(f"{scanner_type}({scanner.name}) failed for {path}: {e}", file=sys.stderr)
-            continue
+        except Exception as error:
+            raise RuntimeError(f"{scanner.name} detection failed for {path}: {error}") from error
 
     if not detected:
         return []
@@ -163,7 +157,6 @@ def _scan_path(
                     scanner,
                     path,
                     timeout_s=timeout_s,
-                    verbose=verbose,
                     lookup_concurrency=lookup_concurrency,
                 )
             )
@@ -177,81 +170,11 @@ def _scan_path(
                 scanner,
                 path,
                 timeout_s=timeout_s,
-                verbose=verbose,
                 lookup_concurrency=lookup_concurrency,
             )
             for scanner in detected
         ]
         return [section for future in futures if (section := future.result()) is not None]
-
-
-def _merge_sections(sections: list[Section]) -> list[Section]:
-    """Merge sections with the same title, combining their rows.
-
-    Deduplicates by (ecosystem, name):
-    - If current.value is identical across all instances: merge into one row with
-      accumulated SOURCE (shows "path +1" format indicating additional sources).
-    - If different exact versions or non-comparable: keep all rows.
-    - Precedence for non-identical values: exact pin > range > unpinned.
-    This ensures version drift between sources is never hidden.
-    """
-    by_title: dict[str, list[DepRow]] = {}
-    for section in sections:
-        if not section.rows:
-            continue
-        by_title.setdefault(section.title, []).extend(section.rows)
-
-    merged_sections: list[Section] = []
-    for title, rows in by_title.items():
-        if len(rows) <= 1:
-            merged_sections.append(Section(title=title, rows=rows))
-            continue
-
-        groups: dict[tuple[str, str], list[DepRow]] = {}
-        for row in rows:
-            key = (row.ecosystem, row.name.lower())
-            groups.setdefault(key, []).append(row)
-
-        deduped: list[DepRow] = []
-        for (_ecosystem, _name), group in groups.items():
-            if len(group) == 1:
-                deduped.append(group[0])
-                continue
-
-            current_vals = {r.current.value for r in group}
-            if len(current_vals) == 1:
-                all_sources = "; ".join(r.source for r in group if r.source)
-                row0 = group[0]
-                extra_count = len(group) - 1
-                display_source = f"{all_sources} +{extra_count}" if extra_count else all_sources
-                deduped.append(
-                    DepRow(
-                        ecosystem=row0.ecosystem,
-                        name=row0.name,
-                        current=row0.current,
-                        latest=row0.latest,
-                        state=row0.state,
-                        source=display_source,
-                        source_class=row0.source_class,
-                        freshness=row0.freshness,
-                        note=row0.note,
-                    )
-                )
-            else:
-                exact_rows = [r for r in group if r.current.note not in ("range", "unpinned")]
-                unpinned_rows = [r for r in group if r.current.note == "unpinned"]
-                range_rows = [r for r in group if r.current.note == "range"]
-
-                if len(exact_rows) >= 1:
-                    deduped.extend(exact_rows)
-                if range_rows:
-                    deduped.extend(range_rows)
-                if unpinned_rows:
-                    deduped.extend(unpinned_rows)
-
-        merged_sections.append(Section(title=title, rows=deduped))
-
-    return merged_sections
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -272,32 +195,29 @@ def main(argv: list[str] | None = None) -> int:
     # Get paths to scan (root + immediate subdirectories for monorepos)
     scan_paths = _get_scan_paths(ctx.root)
 
-    # Collect sections from all detected scanners across all scan paths
     all_sections: list[Section] = []
-    for path in scan_paths:
-        all_sections.extend(
-            _scan_path(
-                path,
-                timeout_s=ctx.timeout_s,
-                verbose=ctx.verbose,
-                concurrency=ctx.concurrency,
+    try:
+        for path in scan_paths:
+            all_sections.extend(
+                _scan_path(
+                    path,
+                    timeout_s=ctx.timeout_s,
+                    concurrency=ctx.concurrency,
+                )
             )
-        )
-        # TODO(scanner-registry): scan_docker_install_sections is called outside the
-        # scanner registry loop. When a --scanners filter is added, this should be moved
-        # inside _scan_path or passed as a scanner to respect scanner selection.
-        # Collect native ecosystem rows from Dockerfile install commands
-        try:
-            docker_install_sections = scan_docker_install_sections(
-                path,
-                timeout_s=ctx.timeout_s,
-                lookup_concurrency=max(1, ctx.concurrency),
+            all_sections.extend(
+                scan_docker_install_sections(
+                    path,
+                    timeout_s=ctx.timeout_s,
+                    lookup_concurrency=ctx.concurrency,
+                )
             )
-            all_sections.extend(docker_install_sections)
-        except Exception as e:
-            if ctx.verbose:
-                print(f"scan_docker_install_sections failed for {path}: {e}", file=sys.stderr)
-
+    except Exception as error:
+        if ctx.verbose:
+            traceback.print_exception(error)
+        else:
+            print(f"Scan failed: {error}", file=sys.stderr)
+        return 1
     # Merge sections with the same ecosystem title
     sections = _merge_sections(all_sections)
 

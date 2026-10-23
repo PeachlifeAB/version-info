@@ -90,36 +90,35 @@ def _parse_package_lock(text: str) -> list[NpmDep]:
 def _pnpm_direct_dependency_sections(data: dict[str, object]) -> list[dict[str, object]]:
     importers = data.get("importers")
     if isinstance(importers, dict):
-        root_importer = importers.get(".")
-        return [root_importer] if isinstance(root_importer, dict) else []
+        return [importer for importer in importers.values() if isinstance(importer, dict)]
     return [data]
 
 
 def _parse_pnpm_lock(text: str) -> list[NpmDep]:
-    """Parse direct root dependencies from pnpm-lock.yaml (v6 top-level, v9 importers)."""
-    data = yaml.safe_load(text)
-    if not isinstance(data, dict):
-        return []
-
-    deps: dict[str, str] = {}
-    for section in _pnpm_direct_dependency_sections(data):
-        for key in ("dependencies", "devDependencies"):
-            entries = section.get(key)
-            if not isinstance(entries, dict):
-                continue
-            for name, entry in entries.items():
-                if not isinstance(entry, dict):
+    deps: dict[str, set[str]] = {}
+    for data in yaml.safe_load_all(text):
+        if not isinstance(data, dict):
+            continue
+        for section in _pnpm_direct_dependency_sections(data):
+            for key in ("dependencies", "devDependencies"):
+                entries = section.get(key)
+                if not isinstance(entries, dict):
                     continue
-                version = entry.get("version")
-                if not isinstance(version, str):
-                    continue
-                resolved = version.split("(", maxsplit=1)[0]
-                if not resolved or ":" in resolved:
-                    continue
-                deps[str(name)] = resolved
+                for name, entry in entries.items():
+                    if not isinstance(entry, dict):
+                        continue
+                    version = entry.get("version")
+                    if not isinstance(version, str):
+                        continue
+                    resolved = version.split("(", maxsplit=1)[0]
+                    if not resolved or ":" in resolved:
+                        continue
+                    deps.setdefault(str(name), set()).add(resolved)
 
     return [
-        NpmDep(name=n, version=v) for n, v in sorted(deps.items(), key=lambda kv: kv[0].lower())
+        NpmDep(name=name, version=version)
+        for name in sorted(deps, key=str.lower)
+        for version in sorted(deps[name])
     ]
 
 
