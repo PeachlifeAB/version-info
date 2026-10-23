@@ -46,22 +46,21 @@ def test_parse_args_stale_flag_defaults_off_and_turns_on() -> None:
     assert parse_args(["--stale"]).stale is True
 
 
-def test_render_json_stale_only_keeps_rows_not_confirmed_latest() -> None:
-    """--stale keeps every row whose freshness is not latest, including unchecked rows."""
+def test_render_json_stale_only_keeps_confirmed_updates() -> None:
     output = json.loads(render(_sections(), json_output=True, stale_only=True))
 
     names = [row["name"] for section in output["sections"] for row in section["rows"]]
     freshness = [row["freshness"] for section in output["sections"] for row in section["rows"]]
 
-    assert names == ["minor-behind-pkg", "unchecked-pkg"]
-    assert freshness == [Freshness.minor_behind.value, Freshness.not_checked.value]
+    assert names == ["minor-behind-pkg"]
+    assert freshness == [Freshness.minor_behind.value]
 
 
 def test_render_table_stale_only_hides_confirmed_latest_rows() -> None:
     output = render(_sections(), stale_only=True)
 
     assert "minor-behind-pkg" in output
-    assert "unchecked-pkg" in output
+    assert "unchecked-pkg" not in output
     assert "current-pkg" not in output
 
 

@@ -219,7 +219,7 @@ def keep_stale_sections(sections: list[Section]) -> list[Section]:
     return [
         Section(
             title=section.title,
-            rows=[row for row in section.rows if row.freshness != Freshness.latest],
+            rows=[row for row in section.rows if row.state == State.update_available],
         )
         for section in sections
     ]
