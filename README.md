@@ -37,19 +37,23 @@ version-info [PATH] [options]
 | `PATH`                | Directory to scan                    |
 | `--json`              | Print JSON instead of tables.        |
 | `--stale`             | Show just stale dependencies         |
+| `--ignore-major`      | Hide known major-update rows.        |
 | `-o`, `--output-file` | Write output to a file.              |
 | `--concurrency N`     | Max concurrent registry lookups.     |
 | `--timeout SECONDS`   | Network and command timeout.         |
 | `--verbose`           | Print scanner diagnostics to stderr. |
 | `--version`           | Print the version and exit.          |
 
-With `--stale`, `--output-file` writes nothing when every row is latest.
+With `--stale`, an empty filtered report removes the output file.
+`--ignore-major` hides known major updates without selecting an older release.
+Unclassifiable versions remain visible unless `--stale` excludes them.
 
 ## Scripting
 
 ```bash
 version-info . --json | jq -r '.sections[].rows[] | select(.state == "update_available") | .name'
 version-info . --stale --json -o stale.json
+version-info . --stale --ignore-major --json -o stale.json
 ```
 
 Environment variables and their defaults are listed in [`.env.example`](.env.example).

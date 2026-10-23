@@ -215,19 +215,30 @@ def _render_json(sections: list[Section]) -> str:
     return json.dumps({"sections": out_sections}, indent=2) + "\n"
 
 
-def keep_stale_sections(sections: list[Section]) -> list[Section]:
+def filter_sections(
+    sections: list[Section], *, stale_only: bool = False, ignore_major: bool = False
+) -> list[Section]:
     return [
         Section(
             title=section.title,
-            rows=[row for row in section.rows if row.state == State.update_available],
+            rows=[
+                row
+                for row in section.rows
+                if (not stale_only or row.state == State.update_available)
+                and (not ignore_major or row.freshness != Freshness.major_behind)
+            ],
         )
         for section in sections
     ]
 
 
-def render(sections: list[Section], json_output: bool = False, stale_only: bool = False) -> str:
-    if stale_only:
-        sections = keep_stale_sections(sections)
+def render(
+    sections: list[Section],
+    json_output: bool = False,
+    stale_only: bool = False,
+    ignore_major: bool = False,
+) -> str:
+    sections = filter_sections(sections, stale_only=stale_only, ignore_major=ignore_major)
     if json_output:
         return _render_json(sections)
     if stale_only and not any(section.rows for section in sections):

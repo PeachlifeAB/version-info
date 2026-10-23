@@ -10,7 +10,7 @@ from pathlib import Path
 from . import __version__
 from .model import DepRow, Section
 from .registry_docker import scan_docker_install_sections
-from .report import ALL_LATEST_MESSAGE, keep_stale_sections, render
+from .report import ALL_LATEST_MESSAGE, filter_sections, render
 from .scanners import SCANNERS, ScannerDef
 
 DEFAULT_CONCURRENCY = 16
@@ -39,6 +39,7 @@ class Ctx:
     verbose: bool
     json_output: bool
     stale_only: bool
+    ignore_major: bool
     output_file: str | None
     concurrency: int
 
@@ -76,7 +77,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument(
         "--stale",
         action="store_true",
-        help="Show only rows not confirmed latest.",
+        help="Show only confirmed available updates.",
+    )
+    p.add_argument(
+        "--ignore-major",
+        action="store_true",
+        help="Hide known major-update rows; do not select alternative releases.",
     )
     p.add_argument(
         "-o",
@@ -258,6 +264,7 @@ def main(argv: list[str] | None = None) -> int:
         verbose=bool(ns.verbose),
         json_output=bool(getattr(ns, "json", False)),
         stale_only=bool(ns.stale),
+        ignore_major=bool(ns.ignore_major),
         output_file=ns.output_file,
         concurrency=max(1, int(ns.concurrency)),
     )
@@ -294,13 +301,14 @@ def main(argv: list[str] | None = None) -> int:
     # Merge sections with the same ecosystem title
     sections = _merge_sections(all_sections)
 
+    sections = filter_sections(sections, stale_only=ctx.stale_only, ignore_major=ctx.ignore_major)
     report = render(sections, json_output=ctx.json_output, stale_only=ctx.stale_only)
     sys.stdout.write(report)
 
-    stale_rows_present = any(section.rows for section in keep_stale_sections(sections))
+    stale_rows_present = any(section.rows for section in sections)
     if ctx.stale_only and not stale_rows_present:
         if not ctx.json_output:
-            sys.stderr.write(ALL_LATEST_MESSAGE)
+            sys.stderr.write("No matching updates.\n" if ctx.ignore_major else ALL_LATEST_MESSAGE)
         if ctx.output_file:
             Path(ctx.output_file).unlink(missing_ok=True)
     elif ctx.output_file:
