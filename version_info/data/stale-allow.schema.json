@@ -1,0 +1,27 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Exact stale dependency allowances",
+	"type": "array",
+	"items": {
+		"type": "object",
+		"additionalProperties": false,
+		"required": ["dependency", "version", "reason"],
+		"properties": {
+			"dependency": {
+				"type": "string",
+				"pattern": "^[^\\s*?<>^~=|,\\[\\]{}]+$",
+				"description": "Exact dependency name; no whitespace, wildcards or ranges."
+			},
+			"version": {
+				"type": "string",
+				"pattern": "^(?!.*(?:^|[.\\-])[xX](?:[.\\-]|$))[^\\s*?<>^~=|,\\[\\]{}]+$",
+				"description": "Exact installed version; no whitespace, wildcards or ranges."
+			},
+			"reason": {
+				"type": "string",
+				"pattern": "^\\s*\\S+(?:\\s+\\S+){2,}\\s*$",
+				"description": "Reason must contain at least three whitespace-separated words."
+			}
+		}
+	}
+}

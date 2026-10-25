@@ -48,6 +48,18 @@ With `--stale`, an empty filtered report removes the output file.
 `--ignore-major` hides known major updates without selecting an older release.
 Unclassifiable versions remain visible unless `--stale` excludes them.
 
+### Allow a stale version
+
+```bash
+version-info allow coverage 7.16.2 --reason "Required for Python 3.10"
+```
+
+Creates or updates `.stale-versions-allow` in the project root. Requires an exact
+installed dependency/version match and a reason of at least three words.
+Nonmatches suggest the closest installed pair without writing.
+Allowances apply only to `--stale`; if no updates remain, no report file is created
+and an existing one is removed. Use `--path DIR` to select another project.
+
 ## Scripting
 
 Scanner exceptions exit nonzero with a diagnostic. An incomplete scan does not

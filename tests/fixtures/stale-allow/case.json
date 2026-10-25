@@ -1,0 +1,80 @@
+{
+	"project": "[[package]]\nname = \"coverage\"\nversion = \"7.16.2\"\n",
+	"other_project": "[[package]]\nname = \"ruff\"\nversion = \"0.17.1\"\n",
+	"other_payload": {
+		"info": { "version": "0.17.2" },
+		"releases": { "0.17.1": [], "0.17.2": [] }
+	},
+	"invalid_documents": ["not json", "{}", "null", "[null]", "[42]"],
+	"short_reasons": ["", "   ", "one", "two words", "one   two"],
+	"payload": {
+		"info": { "version": "7.17.0" },
+		"releases": { "7.16.2": [], "7.17.0": [] }
+	},
+	"allowance": {
+		"dependency": "coverage",
+		"version": "7.16.2",
+		"reason": "Required for Python 3.10"
+	},
+	"updated_reason": "Waiting for downstream compatibility",
+	"changed_project": "[[package]]\nname = \"coverage\"\nversion = \"7.16.3\"\n",
+	"other_allowance": {
+		"dependency": "ruff",
+		"version": "0.17.1",
+		"reason": "Waiting for formatter compatibility"
+	},
+	"mismatches": [
+		{ "dependency": "coverag", "version": "7.16.2" },
+		{ "dependency": "coverage", "version": "7.16.1" },
+		{ "dependency": "Coverage", "version": "7.16.2" },
+		{ "dependency": "coverage", "version": "7.16.2.0" }
+	],
+	"invalid_entries": [
+		{ "dependency": "coverage", "version": "7.16.2" },
+		{ "dependency": "coverage", "version": "7.16.2", "reason": "" },
+		{ "dependency": "coverage", "version": "7.16.2", "reason": "two words" },
+		{ "dependency": "coverage", "version": "7.16.2", "reason": "one   two" },
+		{ "dependency": "coverage", "version": "7.16.2", "reason": null },
+		{
+			"dependency": "coverage",
+			"version": "7.16.2",
+			"reason": "Required for Python",
+			"typo": true
+		},
+		{
+			"dependency": "cover*",
+			"version": "7.16.2",
+			"reason": "Required for Python"
+		},
+		{
+			"dependency": "coverage",
+			"version": "^7.16.2",
+			"reason": "Required for Python"
+		},
+		{
+			"dependency": "coverage",
+			"version": "7.16.*",
+			"reason": "Required for Python"
+		},
+		{
+			"dependency": "coverage",
+			"version": "7.x",
+			"reason": "Required for Python"
+		},
+		{
+			"dependency": "coverage",
+			"version": ">=7.16.2",
+			"reason": "Required for Python"
+		},
+		{
+			"dependency": " coverage",
+			"version": "7.16.2",
+			"reason": "Required for Python"
+		},
+		{
+			"dependency": "coverage",
+			"version": "7.16.2 ",
+			"reason": "Required for Python"
+		}
+	]
+}

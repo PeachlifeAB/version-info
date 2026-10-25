@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import os
 import sys
 import traceback
@@ -8,14 +7,19 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import __version__
+from .cli import parse_args
 from .model import Section
 from .registry_docker import scan_docker_install_sections
 from .report import ALL_LATEST_MESSAGE, filter_sections, render
 from .scanners import SCANNERS, ScannerDef
 from .section_merging import merge_sections as _merge_sections
-
-DEFAULT_CONCURRENCY = 16
+from .stale_allow import (
+    StaleAllowance,
+    exclude_allowances,
+    load_allowances,
+    save_allowance,
+    validate_allowance,
+)
 
 DEFAULT_EXCLUDED_SCAN_DIRS = {
     "__pycache__",
@@ -44,61 +48,6 @@ class Ctx:
     ignore_major: bool
     output_file: str | None
     concurrency: int
-
-
-def parse_args(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog="version-info")
-    p.add_argument(
-        "--version",
-        action="version",
-        version=f"version-info {__version__}",
-    )
-    p.add_argument(
-        "path",
-        nargs="?",
-        default=".",
-        help="Path to scan (default: current directory)",
-    )
-    p.add_argument(
-        "--timeout",
-        type=float,
-        default=float(os.environ.get("VERSION_INFO_TIMEOUT_S", "10")),
-        help="Network/exec timeout in seconds (default: 10).",
-    )
-    p.add_argument(
-        "--verbose",
-        action="store_true",
-        default=os.environ.get("VERSION_INFO_VERBOSE", "0") == "1",
-        help="Enable verbose diagnostics (default: env VERSION_INFO_VERBOSE=1).",
-    )
-    p.add_argument(
-        "--json",
-        action="store_true",
-        help="Output JSON instead of table.",
-    )
-    p.add_argument(
-        "--stale",
-        action="store_true",
-        help="Show only confirmed available updates.",
-    )
-    p.add_argument(
-        "--ignore-major",
-        action="store_true",
-        help="Hide known major-update rows; do not select alternative releases.",
-    )
-    p.add_argument(
-        "-o",
-        "--output-file",
-        help="Also write the report to this file. With --stale, no file is written "
-        "when no rows are stale, and an existing file is removed.",
-    )
-    p.add_argument(
-        "--concurrency",
-        type=int,
-        default=int(os.environ.get("VERSION_INFO_CONCURRENCY", str(DEFAULT_CONCURRENCY))),
-        help=f"Maximum concurrent registry lookups (default: {DEFAULT_CONCURRENCY}).",
-    )
-    return p.parse_args(argv)
 
 
 def _get_scan_paths(root: str) -> list[str]:
@@ -196,7 +145,13 @@ def main(argv: list[str] | None = None) -> int:
     scan_paths = _get_scan_paths(ctx.root)
 
     all_sections: list[Section] = []
+    requested = (
+        StaleAllowance(ns.dependency, ns.dependency_version, ns.reason) if ns.allow else None
+    )
     try:
+        allowances = load_allowances(Path(root)) if ctx.stale_only or requested else []
+        if requested:
+            validate_allowance(requested)
         for path in scan_paths:
             all_sections.extend(
                 _scan_path(
@@ -212,6 +167,9 @@ def main(argv: list[str] | None = None) -> int:
                     lookup_concurrency=ctx.concurrency,
                 )
             )
+        if requested:
+            save_allowance(Path(root), allowances, requested, _merge_sections(all_sections))
+            return 0
     except Exception as error:
         if ctx.verbose:
             traceback.print_exception(error)
@@ -220,6 +178,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     # Merge sections with the same ecosystem title
     sections = _merge_sections(all_sections)
+    if ctx.stale_only:
+        sections = exclude_allowances(sections, allowances)
 
     sections = filter_sections(sections, stale_only=ctx.stale_only, ignore_major=ctx.ignore_major)
     report = render(sections, json_output=ctx.json_output, stale_only=ctx.stale_only)
@@ -228,7 +188,9 @@ def main(argv: list[str] | None = None) -> int:
     stale_rows_present = any(section.rows for section in sections)
     if ctx.stale_only and not stale_rows_present:
         if not ctx.json_output:
-            sys.stderr.write("No matching updates.\n" if ctx.ignore_major else ALL_LATEST_MESSAGE)
+            sys.stderr.write(
+                "No matching updates.\n" if ctx.ignore_major or allowances else ALL_LATEST_MESSAGE
+            )
         if ctx.output_file:
             Path(ctx.output_file).unlink(missing_ok=True)
     elif ctx.output_file:
