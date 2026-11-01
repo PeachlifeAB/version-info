@@ -74,6 +74,8 @@ version-info . --stale --ignore-major --json -o stale.json
 Environment variables and their defaults are listed in [`.env.example`](.env.example).
 Command-line options win over environment variables.
 
+GitHub credential: `GITHUB_TOKEN` when set, else the account `gh auth status` reports as logged in. With neither, Nix and SwiftPM resolve refs with `git ls-remote` and the GitHub API is not called.
+
 ## Supported
 
 | Ecosystem    | Marker files                                      |

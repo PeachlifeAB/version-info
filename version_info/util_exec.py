@@ -13,7 +13,9 @@ class ExecResult:
     exit_code: int
 
 
-def run_argv(argv: list[str], *, timeout_s: float = 10.0) -> ExecResult:
+def run_argv(
+    argv: list[str], *, timeout_s: float = 10.0, env: dict[str, str] | None = None
+) -> ExecResult:
     """Run a subprocess without invoking a shell.
 
     - argv-only (no string interpolation)
@@ -28,7 +30,7 @@ def run_argv(argv: list[str], *, timeout_s: float = 10.0) -> ExecResult:
             capture_output=True,
             text=True,
             timeout=timeout_s,
-            env=os.environ.copy(),
+            env={**os.environ, **(env or {})},
         )
         return ExecResult(
             ok=completed.returncode == 0,

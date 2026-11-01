@@ -15,8 +15,12 @@ from version_info.util_http import HttpResult
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
 def test_cli_json_exposes_selection_without_losing_candidates(
-    case: RegistryCase, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    case: RegistryCase,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     (tmp_path / case.path).write_text(case.project, encoding="utf-8")
     module = f"version_info.registry_{case.ecosystem}"
     if isinstance(case.payload, str):

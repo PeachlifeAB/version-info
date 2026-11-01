@@ -11,7 +11,10 @@ from version_info.util_http import HttpResult
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
-def test_registry_selection_retains_observed_candidates(case: RegistryCase, tmp_path: Path) -> None:
+def test_registry_selection_retains_observed_candidates(
+    case: RegistryCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     project_file = tmp_path / case.path
     project_file.write_text(case.project, encoding="utf-8")
     registry = importlib.import_module(f"version_info.registry_{case.ecosystem}")

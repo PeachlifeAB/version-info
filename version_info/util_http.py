@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 import urllib.error
 import urllib.request
@@ -9,6 +8,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
+
+from .github_auth import github_token
 
 
 @dataclass(frozen=True)
@@ -71,8 +72,8 @@ def get_text(
     headers: dict[str, str] | None = None,
     cache: bool = True,
 ) -> HttpResult:
-    github_token = os.environ.get("GITHUB_TOKEN")
-    github_auth_enabled = bool(github_token) and _should_send_github_token(url)
+    github_token_value = github_token()
+    github_auth_enabled = bool(github_token_value) and _should_send_github_token(url)
     key = _cache_key(url, headers, github_auth_enabled=github_auth_enabled)
     if cache:
         cached = _cache.get(key)
@@ -80,34 +81,52 @@ def get_text(
             return cached
 
     req = urllib.request.Request(url, method="GET")
+    _add_headers(req, headers, github_token_value if github_auth_enabled else None)
+    result = _send(req, timeout_s=timeout_s)
+    if cache and result.status is not None:
+        _cache.set(key, result)
+    return result
 
-    # Only attach GitHub auth to GitHub hosts.
-    if github_auth_enabled and github_token:
-        req.add_header("Authorization", f"Bearer {github_token}")
 
-    if headers:
-        for k, v in headers.items():
-            req.add_header(k, v)
+def post_json(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    timeout_s: float = 10.0,
+) -> tuple[HttpResult, Any]:
+    token = github_token() if _should_send_github_token(url) else None
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), method="POST")
+    _add_headers(req, {"Content-Type": "application/json"}, token)
+    return _parse_json(_send(req, timeout_s=timeout_s))
 
+
+def _add_headers(
+    req: urllib.request.Request, headers: dict[str, str] | None, token: str | None
+) -> None:
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    for k, v in (headers or {}).items():
+        req.add_header(k, v)
+
+
+def _send(req: urllib.request.Request, *, timeout_s: float) -> HttpResult:
     try:
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
             status = getattr(resp, "status", None)
             body = resp.read().decode("utf-8", errors="replace")
-            headers_dict = _collect_headers(resp.headers.items())
-            result = HttpResult(ok=True, status=status, text=body, headers=headers_dict)
-            if cache:
-                _cache.set(key, result)
-            return result
+            return HttpResult(
+                ok=True,
+                status=status,
+                text=body,
+                headers=_collect_headers(resp.headers.items()),
+            )
     except urllib.error.HTTPError as e:
         try:
             body = e.read().decode("utf-8", errors="replace")
         except Exception:
             body = ""
         headers_dict = _collect_headers(e.headers.items()) if e.headers else {}
-        result = HttpResult(ok=False, status=e.code, text=body, error=str(e), headers=headers_dict)
-        if cache:
-            _cache.set(key, result)
-        return result
+        return HttpResult(ok=False, status=e.code, text=body, error=str(e), headers=headers_dict)
     except urllib.error.URLError as e:
         return HttpResult(ok=False, status=None, text=None, error=str(e))
 
@@ -119,7 +138,10 @@ def get_json(
     headers: dict[str, str] | None = None,
     cache: bool = True,
 ) -> tuple[HttpResult, Any]:
-    res = get_text(url, timeout_s=timeout_s, headers=headers, cache=cache)
+    return _parse_json(get_text(url, timeout_s=timeout_s, headers=headers, cache=cache))
+
+
+def _parse_json(res: HttpResult) -> tuple[HttpResult, Any]:
     if not res.ok or res.text is None:
         return res, None
     try:

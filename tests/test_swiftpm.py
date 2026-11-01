@@ -4,9 +4,37 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
+from version_info import github_refs
 from version_info.model import State
 from version_info.registry_swiftpm import _github_latest_tag, _parse_package_resolved, scan_swiftpm
+from version_info.util_exec import ExecResult
 from version_info.util_http import HttpResult
+
+
+@pytest.fixture
+def github_credential(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+
+def test_latest_tag_without_credential_uses_git_ls_remote(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ls_remote_output = "\n".join(
+        f"{'a' * 40}\trefs/tags/{tag}" for tag in ("1.2.2", "1.10.0", "1.9.0", "1.10.0^{}")
+    )
+    monkeypatch.setattr(
+        github_refs, "run_argv", lambda *a, **k: ExecResult(True, ls_remote_output, "", 0)
+    )
+    with patch("version_info.registry_swiftpm.get_json") as rest:
+        artifact, state = _github_latest_tag(
+            "https://github.com/apple/swift-log.git", timeout_s=5.0, current_version="1.2.2"
+        )
+
+    rest.assert_not_called()
+    assert artifact.value == "1.10.0"
+    assert state == State.ok
 
 
 def test_parse_package_resolved_basic() -> None:
@@ -135,6 +163,7 @@ def test_parse_package_resolved_missing_fields() -> None:
     assert deps[0].version == "1.0.0"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_success() -> None:
     """Test successful latest version fetch from GitHub tags."""
     mock_response = HttpResult(
@@ -164,6 +193,7 @@ def test_github_latest_tag_success() -> None:
     assert artifact.url == "https://github.com/apple/swift-argument-parser/tags"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_without_v_prefix() -> None:
     """Test GitHub tag parsing when version tags don't have 'v' prefix."""
     mock_response = HttpResult(
@@ -191,6 +221,7 @@ def test_github_latest_tag_without_v_prefix() -> None:
     assert artifact.url == "https://github.com/apple/swift-log/tags"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_ssh_url() -> None:
     """Test GitHub tag fetching with SSH URL format."""
     mock_response = HttpResult(
@@ -213,6 +244,7 @@ def test_github_latest_tag_ssh_url() -> None:
     assert artifact.value == "2.0.0"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_not_found() -> None:
     """Test 404 handling for GitHub API."""
     mock_response = HttpResult(ok=False, status=404, text="not found", error="HTTP Error 404")
@@ -227,6 +259,7 @@ def test_github_latest_tag_not_found() -> None:
     assert artifact.note == "not found"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_auth_required() -> None:
     """Test 401/403 handling for GitHub API."""
     mock_response = HttpResult(ok=False, status=403, text="forbidden", error="HTTP Error 403")
@@ -241,6 +274,7 @@ def test_github_latest_tag_auth_required() -> None:
     assert artifact.note == "auth required"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_rate_limited() -> None:
     """Test 429 handling for GitHub API."""
     mock_response = HttpResult(
@@ -257,6 +291,7 @@ def test_github_latest_tag_rate_limited() -> None:
     assert artifact.note == "rate limited"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_no_version_tags() -> None:
     """Test error handling when repository has no version tags."""
     mock_response = HttpResult(
@@ -284,6 +319,7 @@ def test_github_latest_tag_no_version_tags() -> None:
     assert artifact.note == "no version tags found"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_non_github_url() -> None:
     """Test error handling for non-GitHub URLs."""
     artifact, state = _github_latest_tag("https://gitlab.com/user/repo.git", timeout_s=10.0)
@@ -293,6 +329,7 @@ def test_github_latest_tag_non_github_url() -> None:
     assert artifact.note == "not a github url"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_github_latest_tag_generic_error() -> None:
     """Test generic HTTP error handling for GitHub API."""
     mock_response = HttpResult(ok=False, status=500, text="server error", error="HTTP Error 500")
@@ -313,6 +350,7 @@ def test_scan_swiftpm_no_package_resolved(tmp_path: Path) -> None:
     assert len(section.rows) == 0
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_scan_swiftpm_with_dependencies(tmp_path: Path) -> None:
     """Test full scan with Package.resolved integration and version comparison."""
     package_resolved = """
@@ -381,6 +419,7 @@ def test_scan_swiftpm_with_dependencies(tmp_path: Path) -> None:
     assert log_row.source == "Package.resolved"
 
 
+@pytest.mark.usefixtures("github_credential")
 def test_scan_swiftpm_handles_registry_errors(tmp_path: Path) -> None:
     """Test that GitHub API errors are properly propagated to row state."""
     package_resolved = """
