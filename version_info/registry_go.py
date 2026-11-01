@@ -9,7 +9,7 @@ from .parallel import map_bounded_ordered
 from .release_models import ReleaseCandidate
 from .release_policy import default_policy
 from .release_selection import registry_selection
-from .util_http import get_json, get_text
+from .util_http import get_json
 
 
 @dataclass(frozen=True)
@@ -147,7 +147,6 @@ def go_proxy_latest(
 
 GOPKG_IN_MAJOR = re.compile(r"^(?P<stem>gopkg\.in/.+)\.v(?P<major>\d+)$")
 SLASH_MAJOR = re.compile(r"^(?P<stem>.+)/v(?P<major>\d+)$")
-DEPRECATED_COMMENT = re.compile(r"^//\s*Deprecated:\s*(?P<notice>.+)$")
 
 
 def next_major_module_path(module: str) -> str:
@@ -157,23 +156,6 @@ def next_major_module_path(module: str) -> str:
     if match := SLASH_MAJOR.match(module):
         return f"{match['stem']}/v{int(match['major']) + 1}"
     return f"{module}/v2"
-
-
-def deprecation_notice(go_mod_text: str) -> str | None:
-    """Read the `// Deprecated:` comment that precedes the module line of a go.mod."""
-    for line in go_mod_text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("module"):
-            return None
-        if match := DEPRECATED_COMMENT.match(stripped):
-            return match["notice"].strip()
-    return None
-
-
-def _proxy_deprecation(module: str, version: str, *, timeout_s: float) -> str | None:
-    url = f"https://proxy.golang.org/{module.replace('/', '%2F')}/@v/{version}.mod"
-    res = get_text(url, timeout_s=timeout_s)
-    return deprecation_notice(res.text or "") if res.ok else None
 
 
 def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Section:
@@ -228,12 +210,6 @@ def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sect
         ):
             latest, state = successor, State.update_available
             note = f"module path {successor_path}"
-
-        notice = _proxy_deprecation(d.name, d.version, timeout_s=timeout_s)
-        if notice is not None:
-            note = f"{note}; deprecated: {notice}" if note else f"deprecated: {notice}"
-            if state == State.ok:
-                state = State.deprecated
 
         return DepRow(
             ecosystem="go",

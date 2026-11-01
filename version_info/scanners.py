@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .deprecation import apply_deprecation
 from .model import DepRow, Section, SourceClass
 from .registry_cargo import scan_cargo
 from .registry_docker import scan_docker
@@ -54,9 +55,9 @@ class ScannerDef:
             )
         else:
             result = self.scan_fn(root, timeout_s=timeout_s)
-        if isinstance(result, Section):
-            return Section(title=self.section_title, rows=result.rows)
-        return Section(title=self.section_title, rows=result)
+        rows = result.rows if isinstance(result, Section) else result
+        rows = apply_deprecation(rows, timeout_s=timeout_s, lookup_concurrency=lookup_concurrency)
+        return Section(title=self.section_title, rows=rows)
 
 
 SCANNERS: tuple[ScannerDef, ...] = (

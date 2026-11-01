@@ -4,27 +4,15 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from version_info.model import State
 from version_info.registry_go import (
     _parse_go_mod,
     _parse_go_sum,
-    deprecation_notice,
     go_proxy_latest,
     next_major_module_path,
     scan_go,
 )
 from version_info.util_http import HttpResult
-
-
-@pytest.fixture(autouse=True)
-def proxy_serves_no_go_mod_files():
-    with patch(
-        "version_info.registry_go.get_text",
-        return_value=HttpResult(ok=False, status=404, text=""),
-    ):
-        yield
 
 
 def test_parse_go_sum_basic() -> None:
@@ -423,15 +411,6 @@ def test_next_major_path_increments_gopkg_in_suffix() -> None:
     assert next_major_module_path("gopkg.in/yaml.v3") == "gopkg.in/yaml.v4"
 
 
-def test_deprecation_notice_reads_comment_above_module_line() -> None:
-    go_mod = "// Deprecated: use go.yaml.in/yaml/v3 instead.\nmodule gopkg.in/yaml.v3\n"
-    assert deprecation_notice(go_mod) == "use go.yaml.in/yaml/v3 instead."
-
-
-def test_deprecation_notice_absent() -> None:
-    assert deprecation_notice("module github.com/o/lib\n\ngo 1.21\n") is None
-
-
 def _proxy_serving(responses: dict[str, str]):
     def fake_get_json(url: str, *, timeout_s: float):
         for suffix, version in responses.items():
@@ -456,25 +435,6 @@ def test_scan_go_reports_next_major_module_path(tmp_path: Path) -> None:
     assert row.state == State.update_available
     assert row.latest.value == "v2.1.0"
     assert row.note is not None and "github.com/o/lib/v2" in row.note
-
-
-def test_scan_go_surfaces_deprecation_notice(tmp_path: Path) -> None:
-    (tmp_path / "go.mod").write_text("module x\n\nrequire gopkg.in/yaml.v3 v3.0.1\n")
-    served = {"gopkg.in%2Fyaml.v3/@latest": "v3.0.1"}
-    mod_text = "// Deprecated: use go.yaml.in/yaml/v3 instead.\nmodule gopkg.in/yaml.v3\n"
-
-    with (
-        patch("version_info.registry_go.get_json", side_effect=_proxy_serving(served)),
-        patch(
-            "version_info.registry_go.get_text",
-            return_value=HttpResult(ok=True, status=200, text=mod_text),
-        ),
-    ):
-        section = scan_go(str(tmp_path), timeout_s=10)
-
-    row = section.rows[0]
-    assert row.state == State.deprecated
-    assert row.note is not None and "use go.yaml.in/yaml/v3 instead." in row.note
 
 
 def test_scan_go_ignores_missing_next_major(tmp_path: Path) -> None:
