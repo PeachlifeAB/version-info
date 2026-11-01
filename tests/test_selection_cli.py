@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from jsonschema import Draft202012Validator
 
-from selection_cases import CASES, RegistryCase
+from selection_cases import CASES, RegistryCase, registry_boundary
 from version_info.main import main
 from version_info.util_http import HttpResult
 
@@ -18,21 +18,9 @@ def test_cli_json_exposes_selection_without_losing_candidates(
     case: RegistryCase,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     (tmp_path / case.path).write_text(case.project, encoding="utf-8")
-    module = f"version_info.registry_{case.ecosystem}"
-    if isinstance(case.payload, str):
-        boundary = patch(
-            f"{module}.get_text", return_value=HttpResult(ok=True, status=200, text=case.payload)
-        )
-    else:
-        boundary = patch(
-            f"{module}.get_json",
-            return_value=(HttpResult(ok=True, status=200, text=None), case.payload),
-        )
-    with boundary:
+    with registry_boundary(case):
         assert main([str(tmp_path), "--json", "--concurrency", "1"]) == 0
     report = json.loads(capsys.readouterr().out)
     rows = [row for section in report["sections"] for row in section["rows"]]

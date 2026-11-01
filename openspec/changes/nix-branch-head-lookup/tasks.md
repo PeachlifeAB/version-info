@@ -4,7 +4,7 @@
 
 ## 2. Branch-head lookup
 
-- [x] 2.1 Parse `original.ref` and compare against branch head via batched GraphQL (chunked at 50), with `git ls-remote` fallback; SwiftPM tags use the same credential gate and fallback.
+- [x] 2.1 Parse `original.ref` and compare against branch head via batched GraphQL (chunked at 50), with `git ls-remote` fallback; SwiftPM tags use the same shared GraphQL batch and fallback.
 - [x] 2.2 Update `tests/test_nix.py` mocks and add tests for the fallback, gh credential and chunking.
 
 ## 3. Verify

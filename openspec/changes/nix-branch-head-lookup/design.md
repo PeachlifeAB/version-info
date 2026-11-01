@@ -7,6 +7,7 @@
 - **Credential at the edge.** A small `github_auth` module resolves the token once (`gh auth token` with the shared exec timeout, else `GITHUB_TOKEN`, else none; resolved once under a lock) and `util_http` consumes the resolved value. Scanners stop reading the environment. Alternative rejected: reading `gh`'s `hosts.yml`, which may hold the token in the keyring.
 - **GraphQL batch.** One aliased query per chunk of 50: `rN: repository(owner, name) { ref(qualifiedName: "refs/heads/<ref>") { target { oid } } }`, or `defaultBranchRef` when no ref is declared. Failed aliases map to per-row errors without failing the section.
 - **`git ls-remote` fallback.** One subprocess per input via the existing exec utility with the shared timeout, bounded by `--concurrency`. Needs no API quota.
+- **One GraphQL module.** `github_graphql.query_repositories` owns batching (50 per request), aliasing and response unwrapping; Nix heads and SwiftPM tags (newest 100 by commit date) are selections on it. The SwiftPM REST tags call is removed, so its 404/429/auth states collapse into "no version tags found" when neither GraphQL nor `git ls-remote` resolves tags.
 - **Shared ref lookup.** `github_refs.ls_remote` serves Nix heads and SwiftPM tags; both use the same credential gate (`github_token()`).
 - **Warnings removed.** Both rate-limit warnings go; the unauthenticated path is no longer rate limited. `--verbose` reports which credential source was used.
 - Non-branch refs (tags, revs) in `original.ref` resolve through `git ls-remote` in both paths; GraphQL handles branches only.

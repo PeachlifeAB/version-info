@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .github_auth import github_token
+from .github_graphql import RepositoryQuery, query_repositories
 from .github_refs import ls_remote
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
-from .util_http import post_json
 
 
 @dataclass(frozen=True)
@@ -99,9 +99,6 @@ def _parse_flake_lock(text: str) -> list[NixFlakeDep]:
     return [deps[name] for name in sorted(deps.keys(), key=lambda k: k.lower())]
 
 
-GRAPHQL_URL = "https://api.github.com/graphql"
-GRAPHQL_CHUNK_SIZE = 50
-
 BranchHeads = dict[str, tuple[Artifact, State]]
 
 
@@ -116,44 +113,21 @@ def _head_unavailable(note: str, state: State = State.error) -> tuple[Artifact, 
     return Artifact(value=None, note=note), state
 
 
-def _graphql_repository_field(alias: str, dep: NixFlakeDep) -> str:
-    owner, repo = json.dumps(dep.owner), json.dumps(dep.repo)
+def _head_selection(dep: NixFlakeDep) -> str:
     if dep.ref is None:
-        selection = "defaultBranchRef { target { oid } }"
-    else:
-        selection = (
-            f"ref(qualifiedName: {json.dumps(f'refs/heads/{dep.ref}')}) {{ target {{ oid }} }}"
-        )
-    return f"{alias}: repository(owner: {owner}, name: {repo}) {{ {selection} }}"
-
-
-def _graphql_chunk_heads(chunk: list[NixFlakeDep], *, timeout_s: float) -> dict[str, str]:
-    fields = [_graphql_repository_field(f"r{i}", dep) for i, dep in enumerate(chunk)]
-    res, data = post_json(
-        GRAPHQL_URL, {"query": "{ " + " ".join(fields) + " }"}, timeout_s=timeout_s
-    )
-    nodes = data.get("data") if res.ok and isinstance(data, dict) else None
-    if not isinstance(nodes, dict):
-        return {}
-    heads: dict[str, str] = {}
-    for i, dep in enumerate(chunk):
-        node = nodes.get(f"r{i}")
-        branch = (
-            (node.get("ref") or node.get("defaultBranchRef")) if isinstance(node, dict) else None
-        )
-        target = branch.get("target") if isinstance(branch, dict) else None
-        oid = target.get("oid") if isinstance(target, dict) else None
-        if isinstance(oid, str) and oid:
-            heads[dep.name] = oid
-    return heads
+        return "defaultBranchRef { target { oid } }"
+    return f"ref(qualifiedName: {json.dumps(f'refs/heads/{dep.ref}')}) {{ target {{ oid }} }}"
 
 
 def _graphql_heads(deps: list[NixFlakeDep], *, timeout_s: float) -> dict[str, str]:
+    queries = [RepositoryQuery(dep.name, dep.owner, dep.repo, _head_selection(dep)) for dep in deps]
     heads: dict[str, str] = {}
-    for start in range(0, len(deps), GRAPHQL_CHUNK_SIZE):
-        heads.update(
-            _graphql_chunk_heads(deps[start : start + GRAPHQL_CHUNK_SIZE], timeout_s=timeout_s)
-        )
+    for name, node in query_repositories(queries, timeout_s=timeout_s).items():
+        branch = node.get("ref") or node.get("defaultBranchRef")
+        target = branch.get("target") if isinstance(branch, dict) else None
+        oid = target.get("oid") if isinstance(target, dict) else None
+        if isinstance(oid, str) and oid:
+            heads[name] = oid
     return heads
 
 

@@ -6,35 +6,33 @@ from unittest.mock import patch
 
 import pytest
 
-from version_info import github_refs
+from version_info import github_graphql, github_refs
 from version_info.model import State
 from version_info.registry_swiftpm import _github_latest_tag, _parse_package_resolved, scan_swiftpm
 from version_info.util_exec import ExecResult
 from version_info.util_http import HttpResult
 
+TWO_PACKAGES = json.dumps({
+    "version": 2,
+    "pins": [
+        {
+            "identity": "swift-argument-parser",
+            "kind": "remoteSourceControl",
+            "location": "https://github.com/apple/swift-argument-parser.git",
+            "state": {"version": "1.2.2"},
+        },
+        {
+            "identity": "swift-log",
+            "kind": "remoteSourceControl",
+            "location": "https://github.com/apple/swift-log.git",
+            "state": {"version": "1.5.3"},
+        },
+    ],
+})
 
-@pytest.fixture
-def github_credential(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
 
-
-def test_latest_tag_without_credential_uses_git_ls_remote(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    ls_remote_output = "\n".join(
-        f"{'a' * 40}\trefs/tags/{tag}" for tag in ("1.2.2", "1.10.0", "1.9.0", "1.10.0^{}")
-    )
-    monkeypatch.setattr(
-        github_refs, "run_argv", lambda *a, **k: ExecResult(True, ls_remote_output, "", 0)
-    )
-    with patch("version_info.registry_swiftpm.get_json") as rest:
-        artifact, state = _github_latest_tag(
-            "https://github.com/apple/swift-log.git", timeout_s=5.0, current_version="1.2.2"
-        )
-
-    rest.assert_not_called()
-    assert artifact.value == "1.10.0"
-    assert state == State.ok
+def _tags_node(*names: str) -> dict[str, object]:
+    return {"refs": {"nodes": [{"name": name} for name in names]}}
 
 
 def test_parse_package_resolved_basic() -> None:
@@ -163,183 +161,96 @@ def test_parse_package_resolved_missing_fields() -> None:
     assert deps[0].version == "1.0.0"
 
 
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_success() -> None:
-    """Test successful latest version fetch from GitHub tags."""
-    mock_response = HttpResult(
-        ok=True,
-        status=200,
-        text=json.dumps([
-            {"name": "v1.3.0", "commit": {"sha": "abc123"}},
-            {"name": "v1.2.3", "commit": {"sha": "def456"}},
-            {"name": "v1.2.2", "commit": {"sha": "ghi789"}},
-        ]),
+def test_latest_tag_strips_v_prefix_and_picks_highest() -> None:
+    artifact, state = _github_latest_tag(
+        "https://github.com/apple/swift-argument-parser.git",
+        tag_names=["v1.2.2", "v1.3.0", "v1.2.3"],
     )
-    mock_json_data = [
-        {"name": "v1.3.0", "commit": {"sha": "abc123"}},
-        {"name": "v1.2.3", "commit": {"sha": "def456"}},
-        {"name": "v1.2.2", "commit": {"sha": "ghi789"}},
-    ]
-
-    with patch(
-        "version_info.registry_swiftpm.get_json", return_value=(mock_response, mock_json_data)
-    ):
-        artifact, state = _github_latest_tag(
-            "https://github.com/apple/swift-argument-parser.git", timeout_s=10.0
-        )
 
     assert state == State.ok
-    assert artifact.value == "1.3.0"  # Should strip leading 'v'
+    assert artifact.value == "1.3.0"
     assert artifact.url == "https://github.com/apple/swift-argument-parser/tags"
 
 
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_without_v_prefix() -> None:
-    """Test GitHub tag parsing when version tags don't have 'v' prefix."""
-    mock_response = HttpResult(
-        ok=True,
-        status=200,
-        text=json.dumps([
-            {"name": "1.5.4", "commit": {"sha": "abc123"}},
-            {"name": "1.5.3", "commit": {"sha": "def456"}},
-        ]),
-    )
-    mock_json_data = [
-        {"name": "1.5.4", "commit": {"sha": "abc123"}},
-        {"name": "1.5.3", "commit": {"sha": "def456"}},
-    ]
-
-    with patch(
-        "version_info.registry_swiftpm.get_json", return_value=(mock_response, mock_json_data)
-    ):
-        artifact, state = _github_latest_tag(
-            "https://github.com/apple/swift-log.git", timeout_s=10.0
-        )
-
-    assert state == State.ok
-    assert artifact.value == "1.5.4"
-    assert artifact.url == "https://github.com/apple/swift-log/tags"
-
-
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_ssh_url() -> None:
-    """Test GitHub tag fetching with SSH URL format."""
-    mock_response = HttpResult(
-        ok=True,
-        status=200,
-        text=json.dumps([
-            {"name": "v2.0.0", "commit": {"sha": "abc123"}},
-        ]),
-    )
-    mock_json_data = [
-        {"name": "v2.0.0", "commit": {"sha": "abc123"}},
-    ]
-
-    with patch(
-        "version_info.registry_swiftpm.get_json", return_value=(mock_response, mock_json_data)
-    ):
-        artifact, state = _github_latest_tag("git@github.com:apple/swift-nio.git", timeout_s=10.0)
+def test_latest_tag_accepts_ssh_urls() -> None:
+    artifact, state = _github_latest_tag("git@github.com:apple/swift-nio.git", tag_names=["v2.0.0"])
 
     assert state == State.ok
     assert artifact.value == "2.0.0"
 
 
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_not_found() -> None:
-    """Test 404 handling for GitHub API."""
-    mock_response = HttpResult(ok=False, status=404, text="not found", error="HTTP Error 404")
-
-    with patch("version_info.registry_swiftpm.get_json", return_value=(mock_response, None)):
-        artifact, state = _github_latest_tag(
-            "https://github.com/user/nonexistent.git", timeout_s=10.0
-        )
-
-    assert state == State.not_found
-    assert artifact.value is None
-    assert artifact.note == "not found"
-
-
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_auth_required() -> None:
-    """Test 401/403 handling for GitHub API."""
-    mock_response = HttpResult(ok=False, status=403, text="forbidden", error="HTTP Error 403")
-
-    with patch("version_info.registry_swiftpm.get_json", return_value=(mock_response, None)):
-        artifact, state = _github_latest_tag(
-            "https://github.com/user/private-repo.git", timeout_s=10.0
-        )
-
-    assert state == State.auth_required
-    assert artifact.value is None
-    assert artifact.note == "auth required"
-
-
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_rate_limited() -> None:
-    """Test 429 handling for GitHub API."""
-    mock_response = HttpResult(
-        ok=False, status=429, text="too many requests", error="HTTP Error 429"
+def test_latest_tag_ignores_non_version_tags() -> None:
+    artifact, state = _github_latest_tag(
+        "https://github.com/user/no-versions.git", tag_names=["release-candidate", "beta"]
     )
-
-    with patch("version_info.registry_swiftpm.get_json", return_value=(mock_response, None)):
-        artifact, state = _github_latest_tag(
-            "https://github.com/apple/swift-package-manager.git", timeout_s=10.0
-        )
-
-    assert state == State.rate_limited
-    assert artifact.value is None
-    assert artifact.note == "rate limited"
-
-
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_no_version_tags() -> None:
-    """Test error handling when repository has no version tags."""
-    mock_response = HttpResult(
-        ok=True,
-        status=200,
-        text=json.dumps([
-            {"name": "release-candidate", "commit": {"sha": "abc123"}},
-            {"name": "beta", "commit": {"sha": "def456"}},
-        ]),
-    )
-    mock_json_data = [
-        {"name": "release-candidate", "commit": {"sha": "abc123"}},
-        {"name": "beta", "commit": {"sha": "def456"}},
-    ]
-
-    with patch(
-        "version_info.registry_swiftpm.get_json", return_value=(mock_response, mock_json_data)
-    ):
-        artifact, state = _github_latest_tag(
-            "https://github.com/user/no-versions.git", timeout_s=10.0
-        )
 
     assert state == State.error
     assert artifact.value is None
     assert artifact.note == "no version tags found"
 
 
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_non_github_url() -> None:
-    """Test error handling for non-GitHub URLs."""
-    artifact, state = _github_latest_tag("https://gitlab.com/user/repo.git", timeout_s=10.0)
+def test_latest_tag_rejects_non_github_urls() -> None:
+    artifact, state = _github_latest_tag("https://gitlab.com/user/repo.git", tag_names=["1.0.0"])
 
     assert state == State.error
-    assert artifact.value is None
     assert artifact.note == "not a github url"
 
 
-@pytest.mark.usefixtures("github_credential")
-def test_github_latest_tag_generic_error() -> None:
-    """Test generic HTTP error handling for GitHub API."""
-    mock_response = HttpResult(ok=False, status=500, text="server error", error="HTTP Error 500")
+def test_scan_with_credential_resolves_every_package_in_one_graphql_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "Package.resolved").write_text(TWO_PACKAGES)
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    graphql = {
+        "data": {"r0": _tags_node("v1.3.0", "v1.2.2"), "r1": _tags_node("v1.5.3")},
+    }
+    ok = HttpResult(ok=True, status=200, text=None)
 
-    with patch("version_info.registry_swiftpm.get_json", return_value=(mock_response, None)):
-        artifact, state = _github_latest_tag("https://github.com/apple/swift.git", timeout_s=10.0)
+    with patch.object(github_graphql, "post_json", return_value=(ok, graphql)) as post:
+        section = scan_swiftpm(str(tmp_path), timeout_s=10.0)
 
-    assert state == State.error
-    assert artifact.value is None
-    assert artifact.note == "HTTP Error 500"
+    assert post.call_count == 1
+    assert [(row.name, row.latest.value, row.state) for row in section.rows] == [
+        ("swift-argument-parser", "1.3.0", State.update_available),
+        ("swift-log", "1.5.3", State.ok),
+    ]
+
+
+def test_scan_without_credential_resolves_tags_with_git_ls_remote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "Package.resolved").write_text(TWO_PACKAGES)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    tags = {"swift-argument-parser": ("1.2.2", "1.10.0", "1.9.0"), "swift-log": ("1.5.3",)}
+
+    def fake_run_argv(argv, **_):
+        repo = argv[2].removeprefix("https://github.com/apple/")
+        return ExecResult(True, "\n".join(f"{'a' * 40}\trefs/tags/{t}" for t in tags[repo]), "", 0)
+
+    monkeypatch.setattr(github_refs, "run_argv", fake_run_argv)
+    with patch.object(github_graphql, "post_json") as post:
+        section = scan_swiftpm(str(tmp_path), timeout_s=10.0)
+
+    post.assert_not_called()
+    assert [(row.name, row.latest.value, row.state) for row in section.rows] == [
+        ("swift-argument-parser", "1.10.0", State.update_available),
+        ("swift-log", "1.5.3", State.ok),
+    ]
+
+
+def test_scan_reports_a_repository_without_resolvable_tags(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "Package.resolved").write_text(TWO_PACKAGES)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        github_refs, "run_argv", lambda *a, **k: ExecResult(False, "", "not found", 128)
+    )
+
+    section = scan_swiftpm(str(tmp_path), timeout_s=10.0)
+
+    assert [row.state for row in section.rows] == [State.error, State.error]
+    assert section.rows[0].latest.note == "no version tags found"
 
 
 def test_scan_swiftpm_no_package_resolved(tmp_path: Path) -> None:
@@ -348,106 +259,3 @@ def test_scan_swiftpm_no_package_resolved(tmp_path: Path) -> None:
 
     assert section.title == "Swift (SwiftPM)"
     assert len(section.rows) == 0
-
-
-@pytest.mark.usefixtures("github_credential")
-def test_scan_swiftpm_with_dependencies(tmp_path: Path) -> None:
-    """Test full scan with Package.resolved integration and version comparison."""
-    package_resolved = """
-{
-  "pins": [
-    {
-      "identity": "swift-argument-parser",
-      "kind": "remoteSourceControl",
-      "location": "https://github.com/apple/swift-argument-parser.git",
-      "state": {
-        "revision": "fee6933f37fde9a5e12a1e4aeaa93fe60116ff2a",
-        "version": "1.2.2"
-      }
-    },
-    {
-      "identity": "swift-log",
-      "kind": "remoteSourceControl",
-      "location": "https://github.com/apple/swift-log.git",
-      "state": {
-        "revision": "532d8b529501fb73a2455b179e0bbb6d49b652ed",
-        "version": "1.5.3"
-      }
-    }
-  ],
-  "version": 2
-}
-    """.strip()
-
-    package_resolved_path = tmp_path / "Package.resolved"
-    package_resolved_path.write_text(package_resolved)
-
-    # Mock GitHub responses
-    def mock_get_json(url: str, timeout_s: float):
-        if "swift-argument-parser" in url:
-            return (
-                HttpResult(ok=True, status=200, text=json.dumps([{"name": "v1.3.0"}])),
-                [{"name": "v1.3.0"}],
-            )
-        elif "swift-log" in url:
-            return (
-                HttpResult(ok=True, status=200, text=json.dumps([{"name": "v1.5.3"}])),
-                [{"name": "v1.5.3"}],
-            )
-        return (HttpResult(ok=False, status=404, text="not found", error="not found"), None)
-
-    with patch("version_info.registry_swiftpm.get_json", side_effect=mock_get_json):
-        section = scan_swiftpm(str(tmp_path), timeout_s=10.0)
-
-    assert section.title == "Swift (SwiftPM)"
-    assert len(section.rows) == 2
-
-    # swift-argument-parser should show update available
-    arg_parser_row = section.rows[0]
-    assert arg_parser_row.name == "swift-argument-parser"
-    assert arg_parser_row.current.value == "1.2.2"
-    assert arg_parser_row.latest.value == "1.3.0"
-    assert arg_parser_row.state == State.update_available
-    assert arg_parser_row.source == "Package.resolved"
-
-    # swift-log should be up-to-date
-    log_row = section.rows[1]
-    assert log_row.name == "swift-log"
-    assert log_row.current.value == "1.5.3"
-    assert log_row.latest.value == "1.5.3"
-    assert log_row.state == State.ok
-    assert log_row.source == "Package.resolved"
-
-
-@pytest.mark.usefixtures("github_credential")
-def test_scan_swiftpm_handles_registry_errors(tmp_path: Path) -> None:
-    """Test that GitHub API errors are properly propagated to row state."""
-    package_resolved = """
-{
-  "pins": [
-    {
-      "identity": "private-package",
-      "kind": "remoteSourceControl",
-      "location": "https://github.com/user/private-package.git",
-      "state": {
-        "version": "1.0.0"
-      }
-    }
-  ],
-  "version": 2
-}
-    """.strip()
-
-    package_resolved_path = tmp_path / "Package.resolved"
-    package_resolved_path.write_text(package_resolved)
-
-    mock_response = HttpResult(ok=False, status=403, text="forbidden", error="forbidden")
-
-    with patch("version_info.registry_swiftpm.get_json", return_value=(mock_response, None)):
-        section = scan_swiftpm(str(tmp_path), timeout_s=10.0)
-
-    assert len(section.rows) == 1
-    row = section.rows[0]
-    assert row.name == "private-package"
-    assert row.state == State.auth_required
-    assert row.latest.value is None

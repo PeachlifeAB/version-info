@@ -4,16 +4,15 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import quote
 
 from .github_auth import github_token
+from .github_graphql import RepositoryQuery, query_repositories
 from .github_refs import ls_remote
 from .model import Artifact, DepRow, Section, State
 from .parallel import map_bounded_ordered
 from .release_models import ReleaseCandidate
 from .release_policy import default_policy
 from .release_selection import registry_selection
-from .util_http import get_json
 from .versioning import version_sort_key
 
 
@@ -98,54 +97,72 @@ def _parse_package_resolved(text: str) -> list[SwiftPMDep]:
     return [deps[name] for name in sorted(deps.keys(), key=lambda k: k.lower())]
 
 
-def _github_tag_names(
-    owner: str, repo: str, *, url: str, timeout_s: float
-) -> tuple[list[str], tuple[Artifact, State] | None]:
-    """Tag names via the tags API with a credential, otherwise via git ls-remote."""
-    if not github_token():
-        shas = ls_remote(owner, repo, ["refs/tags/*"], timeout_s=timeout_s)
-        if shas is None:
-            return [], (Artifact(value=None, url=url, note="git ls-remote failed"), State.error)
-        tags = {ref.removeprefix("refs/tags/").removesuffix("^{}") for ref in shas}
-        return sorted(tags, key=version_sort_key, reverse=True), None
+GITHUB_REPOSITORY_PATTERN = re.compile(r"github\.com[:/]([^/]+)/([^/.]+)")
+TAGS_SELECTION = (
+    'refs(refPrefix: "refs/tags/", first: 100, orderBy: {field: TAG_COMMIT_DATE, direction: DESC})'
+    " { nodes { name } }"
+)
 
-    res, data = get_json(url, timeout_s=timeout_s)
-    if not res.ok:
-        note, state = {
-            404: ("not found", State.not_found),
-            429: ("rate limited", State.rate_limited),
-        }.get(res.status or 0, (res.error or "http error", State.error))
-        if res.status in (401, 403):
-            note, state = "auth required", State.auth_required
-        return [], (Artifact(value=None, url=url, note=note), state)
-    names = (
-        [tag["name"] for tag in data if isinstance(tag, dict) and isinstance(tag.get("name"), str)]
-        if isinstance(data, list)
-        else []
+
+def _graphql_tag_names(node: dict[str, object]) -> list[str]:
+    refs = node.get("refs")
+    nodes = refs.get("nodes") if isinstance(refs, dict) else None
+    return [
+        tag["name"]
+        for tag in nodes or []
+        if isinstance(tag, dict) and isinstance(tag.get("name"), str)
+    ]
+
+
+def _ls_remote_tag_names(owner: str, repo: str, *, timeout_s: float) -> list[str]:
+    shas = ls_remote(owner, repo, ["refs/tags/*"], timeout_s=timeout_s) or {}
+    return [ref.removeprefix("refs/tags/").removesuffix("^{}") for ref in shas]
+
+
+def _tag_names_by_location(
+    deps: list[SwiftPMDep], *, timeout_s: float, lookup_concurrency: int
+) -> dict[str, list[str]]:
+    """Tag names per package: batched GraphQL with a credential, git ls-remote for the rest."""
+    repositories = {
+        dep.location: match.groups()
+        for dep in deps
+        if (match := GITHUB_REPOSITORY_PATTERN.search(dep.location))
+    }
+    tags: dict[str, list[str]] = {}
+    if github_token():
+        queries = [
+            RepositoryQuery(location, owner, repo, TAGS_SELECTION)
+            for location, (owner, repo) in repositories.items()
+        ]
+        for location, node in query_repositories(queries, timeout_s=timeout_s).items():
+            tags[location] = _graphql_tag_names(node)
+    missing = [location for location in repositories if not tags.get(location)]
+    fetched = map_bounded_ordered(
+        missing,
+        lambda location: _ls_remote_tag_names(*repositories[location], timeout_s=timeout_s),
+        max_workers=lookup_concurrency,
     )
-    return names, None
+    tags.update(zip(missing, fetched, strict=True))
+    return tags
 
 
 def _github_latest_tag(
-    repo_url: str, *, timeout_s: float, current_version: str | None = None
+    repo_url: str, *, tag_names: list[str], current_version: str | None = None
 ) -> tuple[Artifact, State]:
-    """Fetch the latest semver tag from a GitHub repository via the tags API."""
-    match = re.search(r"github\.com[:/]([^/]+)/([^/.]+)", repo_url)
+    """Select the latest semver tag among a GitHub repository's tags."""
+    match = GITHUB_REPOSITORY_PATTERN.search(repo_url)
     if not match:
         return Artifact(value=None, url=repo_url, note="not a github url"), State.error
 
     owner, repo = match.group(1), match.group(2)
-    url = f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}/tags"
-
-    tag_names, failure = _github_tag_names(owner, repo, url=url, timeout_s=timeout_s)
-    if failure is not None:
-        return failure
-
     tags_url = f"https://github.com/{owner}/{repo}/tags"
-    candidates = [ReleaseCandidate(name) for name in tag_names]
+    candidates = [
+        ReleaseCandidate(name)
+        for name in sorted(set(tag_names), key=version_sort_key, reverse=True)
+    ]
     missing_tags_note = "no version tags found"
     if not candidates:
-        return Artifact(value=None, url=url, note=missing_tags_note), State.error
+        return Artifact(value=None, url=tags_url, note=missing_tags_note), State.error
     selection = registry_selection(
         ecosystem="swiftpm",
         package=repo_url,
@@ -159,7 +176,7 @@ def _github_latest_tag(
     artifact = selection.artifact
     if artifact.value is None:
         return Artifact(
-            value=None, url=url, note=missing_tags_note, selection=artifact.selection
+            value=None, url=tags_url, note=missing_tags_note, selection=artifact.selection
         ), selection.state
     if artifact.value != current_version:
         artifact = Artifact(
@@ -185,9 +202,11 @@ def scan_swiftpm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) ->
 
     deps = _parse_package_resolved(resolved_path.read_text(encoding="utf-8", errors="replace"))
 
+    tags = _tag_names_by_location(deps, timeout_s=timeout_s, lookup_concurrency=lookup_concurrency)
+
     def build_row(d: SwiftPMDep) -> DepRow:
         latest, latest_state = _github_latest_tag(
-            d.location, timeout_s=timeout_s, current_version=d.version
+            d.location, tag_names=tags.get(d.location, []), current_version=d.version
         )
 
         state = State.ok

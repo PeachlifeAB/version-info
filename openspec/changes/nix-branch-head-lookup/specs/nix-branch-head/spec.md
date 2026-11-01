@@ -32,6 +32,11 @@ Without a GitHub credential, the scanner SHALL resolve each branch head with `gi
 - **WHEN** neither `GITHUB_TOKEN` nor a logged-in `gh` is available
 - **THEN** each input SHALL be resolved by `git ls-remote` and no rate-limit warning SHALL be printed
 
+#### Scenario: SwiftPM with a credential
+
+- **WHEN** a credential is available and Package.resolved pins several GitHub packages
+- **THEN** their tags SHALL be resolved through the same batched GraphQL request path, with no per-package REST request
+
 #### Scenario: SwiftPM without a credential
 
 - **WHEN** neither `GITHUB_TOKEN` nor a logged-in `gh` is available

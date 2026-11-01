@@ -8,7 +8,7 @@ from typing import ClassVar
 
 import pytest
 
-from version_info import github_auth, github_refs, registry_nix
+from version_info import github_auth, github_graphql, github_refs
 from version_info.model import State
 from version_info.registry_nix import scan_nix
 from version_info.util_exec import ExecResult
@@ -124,7 +124,7 @@ def test_graphql_requests_are_chunked(tmp_path, monkeypatch):
             "locked": {"owner": "o", "repo": f"r{i}", "rev": LOCKED_REV, "type": "github"},
             "original": {"owner": "o", "repo": f"r{i}", "type": "github"},
         }
-        for i in range(registry_nix.GRAPHQL_CHUNK_SIZE + 1)
+        for i in range(github_graphql.CHUNK_SIZE + 1)
     }
     (tmp_path / "flake.lock").write_text(json.dumps({"nodes": nodes, "version": 7}))
     sizes: list[int] = []
@@ -134,8 +134,8 @@ def test_graphql_requests_are_chunked(tmp_path, monkeypatch):
         return type("R", (), {"ok": True})(), {"data": {}}
 
     monkeypatch.setenv("GITHUB_TOKEN", "t")
-    monkeypatch.setattr(registry_nix, "post_json", fake_post_json)
+    monkeypatch.setattr(github_graphql, "post_json", fake_post_json)
     monkeypatch.setattr(github_refs, "run_argv", lambda *a, **k: type("E", (), {"ok": False})())
     scan_nix(str(tmp_path), timeout_s=5)
 
-    assert sizes == [registry_nix.GRAPHQL_CHUNK_SIZE, 1]
+    assert sizes == [github_graphql.CHUNK_SIZE, 1]

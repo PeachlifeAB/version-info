@@ -17,6 +17,11 @@ Feature: GitHub credential and branch-head lookups
     Then all inputs are resolved in one batched GraphQL request
     And the inputs are reported as update available
 
+  Scenario: SwiftPM tags use the same batched request
+    Given a Package.resolved pinning several GitHub packages
+    When a SwiftPM scan runs with a GitHub credential
+    Then all packages are resolved in one batched GraphQL request
+
   Scenario Outline: Credential-free lookups use git
     Given neither GITHUB_TOKEN nor a logged-in gh is available
     When a <ecosystem> scan runs
