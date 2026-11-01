@@ -9,3 +9,16 @@ Feature: Deprecated dependencies
     Given deps.dev is unreachable
     When version-info scans the project
     Then the dependency keeps its normal state
+
+  Scenario: An archived GitHub repository counts as deprecated
+    Given a dependency whose GitHub repository is archived
+    And a GitHub credential is available
+    When version-info scans the project
+    Then the dependency is reported as deprecated with the note "repository archived"
+    And all repositories are checked in one batched GraphQL request
+
+  Scenario: Archived status is not guessed without a credential
+    Given a dependency hosted on GitHub
+    And no GitHub credential is available
+    When version-info scans the project
+    Then the dependency keeps its normal state

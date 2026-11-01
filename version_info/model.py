@@ -70,6 +70,12 @@ class Artifact:
 
 
 @dataclass(frozen=True)
+class RepositoryRef:
+    owner: str
+    repo: str
+
+
+@dataclass(frozen=True)
 class DepRow:
     ecosystem: str
     name: str
@@ -80,6 +86,7 @@ class DepRow:
     source_class: SourceClass = SourceClass.resolved_lockfile
     freshness: Freshness = Freshness.not_checked
     note: str | None = None
+    repository: RepositoryRef | None = None
 
     def __post_init__(self) -> None:
         if self.freshness != Freshness.not_checked:

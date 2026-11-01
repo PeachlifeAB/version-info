@@ -8,7 +8,7 @@ from pathlib import Path
 from .github_auth import github_token
 from .github_graphql import RepositoryQuery, query_repositories
 from .github_refs import ls_remote
-from .model import Artifact, DepRow, Section, State
+from .model import Artifact, DepRow, RepositoryRef, Section, State
 from .parallel import map_bounded_ordered
 from .release_models import ReleaseCandidate
 from .release_policy import default_policy
@@ -98,6 +98,13 @@ def _parse_package_resolved(text: str) -> list[SwiftPMDep]:
 
 
 GITHUB_REPOSITORY_PATTERN = re.compile(r"github\.com[:/]([^/]+)/([^/.]+)")
+
+
+def _repository_ref(location: str) -> RepositoryRef | None:
+    match = GITHUB_REPOSITORY_PATTERN.search(location)
+    return RepositoryRef(match[1], match[2]) if match else None
+
+
 TAGS_SELECTION = (
     'refs(refPrefix: "refs/tags/", first: 100, orderBy: {field: TAG_COMMIT_DATE, direction: DESC})'
     " { nodes { name } }"
@@ -222,6 +229,7 @@ def scan_swiftpm(root: str, *, timeout_s: float, lookup_concurrency: int = 1) ->
             latest=latest,
             state=state,
             source="Package.resolved",
+            repository=_repository_ref(d.location),
         )
 
     rows = map_bounded_ordered(deps, build_row, max_workers=lookup_concurrency)

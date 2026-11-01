@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
 
 from version_info.deprecation import apply_deprecation, deps_dev_deprecation
-from version_info.model import Artifact, DepRow, Section, State
+from version_info.model import Artifact, DepRow, RepositoryRef, Section, State
 from version_info.scanners import ScannerDef
 from version_info.util_http import HttpResult
 
@@ -111,3 +112,35 @@ def test_every_scanner_gets_the_deprecation_check() -> None:
         section = scanner.scan_section(".", timeout_s=1)
     assert isinstance(section, Section)
     assert section.rows[0].state == State.deprecated
+
+
+def _repo_row(name: str = "jwt-go") -> DepRow:
+    return replace(_row("swiftpm", name, "1.0.0"), repository=RepositoryRef("o", name))
+
+
+def _apply_with_graphql(rows: list[DepRow], nodes: dict, *, token: str | None = "t") -> tuple:
+    graphql = patch("version_info.deprecation.query_repositories", return_value=nodes)
+    credential = patch("version_info.deprecation.github_token", return_value=token)
+    with graphql as queried, credential:
+        return apply_deprecation(rows, timeout_s=1, lookup_concurrency=1), queried
+
+
+def test_archived_github_repository_counts_as_deprecated() -> None:
+    rows, queried = _apply_with_graphql(
+        [_repo_row("a"), _repo_row("b")], {"a": {"isArchived": True}, "b": {"isArchived": False}}
+    )
+    assert [row.state for row in rows] == [State.deprecated, State.ok]
+    assert rows[0].note == "deprecated: repository archived"
+    assert queried.call_count == 1
+
+
+def test_archived_check_is_skipped_without_a_github_credential() -> None:
+    rows, queried = _apply_with_graphql([_repo_row()], {"jwt-go": {"isArchived": True}}, token=None)
+    assert rows[0].state == State.ok
+    queried.assert_not_called()
+
+
+def test_archived_check_is_skipped_when_no_row_has_a_repository() -> None:
+    with patch("version_info.deprecation.github_token") as credential:
+        apply_deprecation([_row("docker", "nginx")], timeout_s=1, lookup_concurrency=1)
+    credential.assert_not_called()

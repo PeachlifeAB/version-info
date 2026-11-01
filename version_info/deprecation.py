@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import replace
 from urllib.parse import quote
 
+from .github_auth import github_token
+from .github_graphql import RepositoryQuery, query_repositories
 from .model import DepRow, Freshness, State
 from .parallel import map_bounded_ordered
 from .util_http import get_json
@@ -19,6 +21,8 @@ DEPS_DEV_SYSTEMS = {
     "ruby": "rubygems",
 }
 UNSPECIFIED_NOTICE = "deprecated"
+ARCHIVED_NOTICE = "repository archived"
+ARCHIVED_SELECTION = "isArchived"
 
 
 def deps_dev_deprecation(row: DepRow, *, timeout_s: float) -> str | None:
@@ -48,6 +52,19 @@ def with_deprecation(row: DepRow, notice: str | None) -> DepRow:
     return replace(row, state=state, note=note, freshness=Freshness.not_checked)
 
 
+def archived_repositories(rows: list[DepRow], *, timeout_s: float) -> set[str]:
+    """Names of rows whose GitHub repository is archived; unverifiable without a credential."""
+    queries = [
+        RepositoryQuery(row.name, row.repository.owner, row.repository.repo, ARCHIVED_SELECTION)
+        for row in rows
+        if row.repository is not None
+    ]
+    if not queries or not github_token():
+        return set()
+    nodes = query_repositories(queries, timeout_s=timeout_s)
+    return {name for name, node in nodes.items() if node.get("isArchived") is True}
+
+
 def apply_deprecation(
     rows: list[DepRow], *, timeout_s: float, lookup_concurrency: int
 ) -> list[DepRow]:
@@ -56,4 +73,8 @@ def apply_deprecation(
         lambda row: deps_dev_deprecation(row, timeout_s=timeout_s),
         max_workers=lookup_concurrency,
     )
-    return [with_deprecation(row, notice) for row, notice in zip(rows, notices, strict=True)]
+    archived = archived_repositories(rows, timeout_s=timeout_s)
+    return [
+        with_deprecation(row, notice or (ARCHIVED_NOTICE if row.name in archived else None))
+        for row, notice in zip(rows, notices, strict=True)
+    ]

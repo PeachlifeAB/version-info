@@ -7,7 +7,7 @@ from pathlib import Path
 from .github_auth import github_token
 from .github_graphql import RepositoryQuery, query_repositories
 from .github_refs import ls_remote
-from .model import Artifact, DepRow, Section, State
+from .model import Artifact, DepRow, RepositoryRef, Section, State
 from .parallel import map_bounded_ordered
 
 
@@ -193,6 +193,7 @@ def scan_nix(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sec
             latest=latest,
             state=state,
             source="flake.lock",
+            repository=RepositoryRef(d.owner, d.repo),
         )
 
     return Section(title="Nix (Flakes)", rows=[build_row(d) for d in deps])

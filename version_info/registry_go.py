@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .model import Artifact, DepRow, Section, SourceClass, State
+from .model import Artifact, DepRow, RepositoryRef, Section, SourceClass, State
 from .parallel import map_bounded_ordered
 from .release_models import ReleaseCandidate
 from .release_policy import default_policy
@@ -146,6 +146,7 @@ def go_proxy_latest(
 
 
 GOPKG_IN_MAJOR = re.compile(r"^(?P<stem>gopkg\.in/.+)\.v(?P<major>\d+)$")
+GITHUB_MODULE = re.compile(r"^github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)")
 SLASH_MAJOR = re.compile(r"^(?P<stem>.+)/v(?P<major>\d+)$")
 
 
@@ -156,6 +157,11 @@ def next_major_module_path(module: str) -> str:
     if match := SLASH_MAJOR.match(module):
         return f"{match['stem']}/v{int(match['major']) + 1}"
     return f"{module}/v2"
+
+
+def _repository_ref(module: str) -> RepositoryRef | None:
+    match = GITHUB_MODULE.match(module)
+    return RepositoryRef(match["owner"], match["repo"]) if match else None
 
 
 def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Section:
@@ -220,6 +226,7 @@ def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sect
             source=source,
             source_class=source_class,
             note=note,
+            repository=_repository_ref(d.name),
         )
 
     rows = map_bounded_ordered(deps, build_row, max_workers=lookup_concurrency)
