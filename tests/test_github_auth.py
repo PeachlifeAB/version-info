@@ -9,12 +9,17 @@ from version_info import github_auth
 from version_info.util_exec import ExecResult
 from version_info.util_http import HttpResult, get_text, post_json
 
+fake_envs: list[list[dict[str, str] | None]] = []
+
 
 def _gh_logged_in(token: str):
     calls: list[list[str]] = []
+    envs: list[dict[str, str] | None] = []
+    fake_envs.append(envs)
 
-    def fake_run_argv(argv, **_):
+    def fake_run_argv(argv, **kwargs):
         calls.append(argv)
+        envs.append(kwargs.get("env"))
         return ExecResult(True, token + "\n", "", 0)
 
     return fake_run_argv, calls
@@ -78,3 +83,13 @@ def test_github_requests_invoke_gh_once(monkeypatch: pytest.MonkeyPatch):
         get_text("https://api.github.com/repos/o/r2/tags", cache=False)
 
     assert calls == [["gh", "auth", "token"]]
+
+
+def test_gh_is_asked_for_its_stored_login_not_an_echoed_env_token(monkeypatch: pytest.MonkeyPatch):
+    fake, _ = _gh_logged_in("from-gh")
+    monkeypatch.setattr(github_auth, "run_argv", fake)
+    monkeypatch.setenv("GITHUB_TOKEN", "stale")
+
+    github_auth.github_token()
+
+    assert fake_envs[-1] == [{"GITHUB_TOKEN": "", "GH_TOKEN": ""}]
