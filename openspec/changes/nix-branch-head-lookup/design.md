@@ -4,7 +4,7 @@
 
 ## Decisions
 
-- **Credential at the edge.** A small `github_auth` module resolves the token once (`GITHUB_TOKEN`, else `gh auth token` with the shared exec timeout, else none) and `util_http` consumes the resolved value. Scanners stop reading the environment. Alternative rejected: reading `gh`'s `hosts.yml`, which may hold the token in the keyring.
+- **Credential at the edge.** A small `github_auth` module resolves the token once (`gh auth token` with the shared exec timeout, else `GITHUB_TOKEN`, else none; resolved once under a lock) and `util_http` consumes the resolved value. Scanners stop reading the environment. Alternative rejected: reading `gh`'s `hosts.yml`, which may hold the token in the keyring.
 - **GraphQL batch.** One aliased query per chunk of 50: `rN: repository(owner, name) { ref(qualifiedName: "refs/heads/<ref>") { target { oid } } }`, or `defaultBranchRef` when no ref is declared. Failed aliases map to per-row errors without failing the section.
 - **`git ls-remote` fallback.** One subprocess per input via the existing exec utility with the shared timeout, bounded by `--concurrency`. Needs no API quota.
 - **Shared ref lookup.** `github_refs.ls_remote` serves Nix heads and SwiftPM tags; both use the same credential gate (`github_token()`).

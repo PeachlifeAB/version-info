@@ -1,6 +1,6 @@
 ## 1. Credential resolution
 
-- [x] 1.1 Add edge-resolved GitHub credential (`GITHUB_TOKEN`, else `gh auth token`, else none) consumed by `util_http`; remove both rate-limit warnings.
+- [x] 1.1 Add edge-resolved GitHub credential (`gh auth token`, else `GITHUB_TOKEN`, else none) consumed by `util_http`; remove both rate-limit warnings.
 
 ## 2. Branch-head lookup
 

@@ -5,10 +5,11 @@ Feature: GitHub credential and branch-head lookups
     Then the gh token authenticates GitHub requests
     And no GITHUB_TOKEN warning is printed
 
-  Scenario: GITHUB_TOKEN wins over gh
-    Given GITHUB_TOKEN is set
+  Scenario: GITHUB_TOKEN is only the fallback
+    Given gh is logged in and GITHUB_TOKEN is also set
     When a scan runs
-    Then gh is not invoked
+    Then the gh token is used and gh is invoked once
+    And GITHUB_TOKEN is used only when gh is missing or logged out
 
   Scenario: Flake inputs are compared with their tracked branch head
     Given a flake lock pinned behind the head of the tracked branch

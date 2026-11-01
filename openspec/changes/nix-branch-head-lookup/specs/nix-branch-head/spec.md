@@ -39,17 +39,22 @@ Without a GitHub credential, the scanner SHALL resolve each branch head with `gi
 
 ### Requirement: gh-aware credential resolution
 
-The CLI SHALL resolve the GitHub credential once at startup: `GITHUB_TOKEN` when set, else the output of `gh auth token` when `gh` is installed and logged in, else none. Setting `GITHUB_TOKEN` SHALL NOT be required when `gh` is logged in.
+The CLI SHALL resolve the GitHub credential once at startup: the output of `gh auth token` when `gh` is installed and logged in, else `GITHUB_TOKEN`, else none. Setting `GITHUB_TOKEN` SHALL NOT be required when `gh` is logged in.
 
 #### Scenario: gh logged in, no env token
 
 - **WHEN** `GITHUB_TOKEN` is unset and `gh auth status` reports a logged-in account
 - **THEN** the gh token SHALL authenticate GitHub requests and no "GITHUB_TOKEN not set" warning SHALL be printed
 
-#### Scenario: Env token wins
+#### Scenario: gh wins, env token is the fallback
 
-- **WHEN** `GITHUB_TOKEN` is set
-- **THEN** it SHALL be used and `gh` SHALL NOT be invoked
+- **WHEN** `gh` is logged in and `GITHUB_TOKEN` is also set
+- **THEN** the gh token SHALL be used, and `GITHUB_TOKEN` SHALL be used only when `gh` is missing or logged out
+
+#### Scenario: One gh invocation
+
+- **WHEN** several scanners request the credential concurrently
+- **THEN** `gh auth token` SHALL run once per process
 
 #### Scenario: Token is only sent to GitHub hosts
 
