@@ -25,6 +25,7 @@ def _parse_semver(value: str | None) -> tuple[int, int, int] | None:
 class State(str, Enum):
     ok = "ok"
     update_available = "update_available"
+    deprecated = "deprecated"
     pinned = "pinned"
     not_applicable = "not_applicable"
     auth_required = "auth_required"

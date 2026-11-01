@@ -104,7 +104,10 @@ _RUNTIME_STATUS: dict[State, str] = {
     State.update_available: "public",
 }
 
+STALE_STATES = frozenset({State.update_available, State.deprecated})
+
 _DEP_STATUS: dict[State, str] = {
+    State.deprecated: "deprecated",
     State.local_only: "local",
     State.auth_required: "auth",
     State.rate_limited: "rate",
@@ -139,12 +142,15 @@ def _summary(title: str, rows: list[DepRow]) -> str:
         noun = "dep"
     noun_text = noun if count == 1 else f"{noun}s"
     updates = sum(1 for row in rows if row.state == State.update_available)
+    deprecated = sum(1 for row in rows if row.state == State.deprecated)
     issues = sum(1 for row in rows if _is_registry_issue(row))
     local = sum(1 for row in rows if row.state == State.local_only)
     parts = [f"{title}  {count} {noun_text}"]
     if updates:
         update_text = "update" if updates == 1 else "updates"
         parts.append(f"{updates} {update_text}")
+    if deprecated:
+        parts.append(f"{deprecated} deprecated")
     if local:
         parts.append(f"{local} local")
     if issues:
@@ -224,7 +230,7 @@ def filter_sections(
             rows=[
                 row
                 for row in section.rows
-                if (not stale_only or row.state == State.update_available)
+                if (not stale_only or row.state in STALE_STATES)
                 and (not ignore_major or row.freshness != Freshness.major_behind)
             ],
         )

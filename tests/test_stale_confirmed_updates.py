@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from version_info.model import Artifact, DepRow, Section, State
-from version_info.report import render
+from version_info.report import STALE_STATES, render
 
 
 def test_stale_output_requires_a_confirmed_newer_version() -> None:
@@ -25,9 +25,7 @@ def test_stale_output_requires_a_confirmed_newer_version() -> None:
     ]
     report = json.loads(render(sections, json_output=True, stale_only=True))
     names = [row["name"] for section in report["sections"] for row in section["rows"]]
-    assert names == [State.update_available.value]
+    assert sorted(names) == sorted(state.value for state in STALE_STATES)
     table = render(sections, stale_only=True)
-    assert State.update_available.value in table
     for state in State:
-        if state != State.update_available:
-            assert state.value not in table
+        assert (state.value in table) == (state in STALE_STATES)
