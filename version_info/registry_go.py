@@ -9,7 +9,7 @@ from .parallel import map_bounded_ordered
 from .release_models import ReleaseCandidate
 from .release_policy import default_policy
 from .release_selection import registry_selection
-from .util_http import get_json
+from .util_http import get_json, get_text
 
 
 @dataclass(frozen=True)
@@ -159,9 +159,23 @@ def next_major_module_path(module: str) -> str:
     return f"{module}/v2"
 
 
-def _repository_ref(module: str) -> RepositoryRef | None:
-    match = GITHUB_MODULE.match(module)
-    return RepositoryRef(match["owner"], match["repo"]) if match else None
+GO_SOURCE_META = re.compile(
+    r"<meta\s+name=[\"']go-(?:source|import)[\"']\s+content=[\"']([^\"']*)[\"']", re.I
+)
+GITHUB_URL = re.compile(r"github\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s#{]+)")
+
+
+def _repository_ref(module: str, *, timeout_s: float) -> RepositoryRef | None:
+    """Locate the GitHub repository behind a module, asking its host for vanity import paths."""
+    if match := GITHUB_MODULE.match(module):
+        return RepositoryRef(match["owner"], match["repo"])
+    res = get_text(f"https://{module}?go-get=1", timeout_s=timeout_s)
+    if not res.ok:
+        return None
+    for content in GO_SOURCE_META.findall(res.text or ""):
+        if match := GITHUB_URL.search(content):
+            return RepositoryRef(match["owner"], match["repo"].removesuffix(".git"))
+    return None
 
 
 def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Section:
@@ -226,7 +240,7 @@ def scan_go(root: str, *, timeout_s: float, lookup_concurrency: int = 1) -> Sect
             source=source,
             source_class=source_class,
             note=note,
-            repository=_repository_ref(d.name),
+            repository=_repository_ref(d.name, timeout_s=timeout_s),
         )
 
     rows = map_bounded_ordered(deps, build_row, max_workers=lookup_concurrency)

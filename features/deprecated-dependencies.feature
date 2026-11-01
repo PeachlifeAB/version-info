@@ -22,3 +22,9 @@ Feature: Deprecated dependencies
     And no GitHub credential is available
     When version-info scans the project
     Then the dependency keeps its normal state
+
+  Scenario: Locate the repository of a Go vanity import path
+    Given a Go module whose host publishes a go-source or go-import tag naming a GitHub repository
+    When version-info scans the project
+    Then that repository is used for the archived check
+    And no list of known modules is consulted

@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from version_info.model import State
+import pytest
+
+from version_info.model import RepositoryRef, State
 from version_info.registry_go import (
     _parse_go_mod,
     _parse_go_sum,
@@ -13,6 +15,15 @@ from version_info.registry_go import (
     scan_go,
 )
 from version_info.util_http import HttpResult
+
+
+@pytest.fixture(autouse=True)
+def vanity_hosts_publish_nothing():
+    with patch(
+        "version_info.registry_go.get_text",
+        return_value=HttpResult(ok=False, status=404, text=""),
+    ):
+        yield
 
 
 def test_parse_go_sum_basic() -> None:
@@ -446,3 +457,49 @@ def test_scan_go_ignores_missing_next_major(tmp_path: Path) -> None:
 
     assert section.rows[0].state == State.ok
     assert section.rows[0].note is None
+
+
+def _scan_vanity_module(tmp_path: Path, meta: str, module: str = "gopkg.in/yaml.v3"):
+    (tmp_path / "go.mod").write_text(f"module x\n\nrequire {module} v3.0.1\n")
+    served = {f"{module.replace('/', '%2F')}/@latest": "v3.0.1"}
+    page = HttpResult(ok=True, status=200, text=f"<html><head>{meta}</head></html>")
+    with (
+        patch("version_info.registry_go.get_json", side_effect=_proxy_serving(served)),
+        patch("version_info.registry_go.get_text", return_value=page) as fetched,
+    ):
+        return scan_go(str(tmp_path), timeout_s=10).rows[0], fetched
+
+
+def test_vanity_module_repository_comes_from_its_go_source_tag(tmp_path: Path) -> None:
+    meta = (
+        '<meta name="go-source" content="gopkg.in/yaml.v3 _ '
+        "https://github.com/go-yaml/yaml/tree/v3.0.1{/dir} "
+        'https://github.com/go-yaml/yaml/blob/v3.0.1{/dir}/{file}#L{line}">'
+    )
+    row, fetched = _scan_vanity_module(tmp_path, meta)
+    assert row.repository == RepositoryRef("go-yaml", "yaml")
+    assert fetched.call_args.args[0] == "https://gopkg.in/yaml.v3?go-get=1"
+
+
+def test_vanity_module_falls_back_to_a_github_go_import_tag(tmp_path: Path) -> None:
+    meta = '<meta name="go-import" content="k8s.io/api git https://github.com/kubernetes/api.git">'
+    row, _ = _scan_vanity_module(tmp_path, meta, module="k8s.io/api")
+    assert row.repository == RepositoryRef("kubernetes", "api")
+
+
+def test_vanity_module_without_a_github_source_has_no_repository(tmp_path: Path) -> None:
+    meta = '<meta name="go-import" content="example.org/m git https://git.example.org/m">'
+    row, _ = _scan_vanity_module(tmp_path, meta, module="example.org/m")
+    assert row.repository is None
+
+
+def test_github_module_needs_no_discovery_request(tmp_path: Path) -> None:
+    (tmp_path / "go.mod").write_text("module x\n\nrequire github.com/o/lib v1.0.0\n")
+    served = {"github.com%2Fo%2Flib/@latest": "v1.0.0"}
+    with (
+        patch("version_info.registry_go.get_json", side_effect=_proxy_serving(served)),
+        patch("version_info.registry_go.get_text") as fetched,
+    ):
+        row = scan_go(str(tmp_path), timeout_s=10).rows[0]
+    assert row.repository == RepositoryRef("o", "lib")
+    fetched.assert_not_called()
