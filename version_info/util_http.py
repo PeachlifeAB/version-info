@@ -72,8 +72,8 @@ def get_text(
     headers: dict[str, str] | None = None,
     cache: bool = True,
 ) -> HttpResult:
-    github_token_value = github_token()
-    github_auth_enabled = bool(github_token_value) and _should_send_github_token(url)
+    github_token_value = github_token() if _should_send_github_token(url) else None
+    github_auth_enabled = bool(github_token_value)
     key = _cache_key(url, headers, github_auth_enabled=github_auth_enabled)
     if cache:
         cached = _cache.get(key)
@@ -81,7 +81,7 @@ def get_text(
             return cached
 
     req = urllib.request.Request(url, method="GET")
-    _add_headers(req, headers, github_token_value if github_auth_enabled else None)
+    _add_headers(req, headers, github_token_value)
     result = _send(req, timeout_s=timeout_s)
     if cache and result.status is not None:
         _cache.set(key, result)
