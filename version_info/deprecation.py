@@ -10,7 +10,14 @@ from .util_http import get_json
 DEPS_DEV_VERSION_URL = (
     "https://api.deps.dev/v3/systems/{system}/packages/{package}/versions/{version}"
 )
-DEPS_DEV_SYSTEMS = {"cargo": "cargo", "go": "go", "npm": "npm", "pypi": "pypi"}
+DEPS_DEV_SYSTEMS = {
+    "cargo": "cargo",
+    "go": "go",
+    "gradle": "maven",
+    "npm": "npm",
+    "pypi": "pypi",
+    "ruby": "rubygems",
+}
 UNSPECIFIED_NOTICE = "deprecated"
 
 

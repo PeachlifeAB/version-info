@@ -42,6 +42,24 @@ def test_deprecated_without_reason_still_reports() -> None:
         assert deps_dev_deprecation(_row(), timeout_s=1) == "deprecated"
 
 
+@pytest.mark.parametrize(
+    ("ecosystem", "name", "system", "encoded"),
+    [
+        ("gradle", "com.google.guava:guava", "maven", "com.google.guava%3Aguava"),
+        ("ruby", "rails", "rubygems", "rails"),
+    ],
+)
+def test_ecosystems_map_to_their_deps_dev_system(
+    ecosystem: str, name: str, system: str, encoded: str
+) -> None:
+    fake = _deps_dev({"isDeprecated": False})
+    with patch("version_info.deprecation.get_json", side_effect=fake):
+        deps_dev_deprecation(_row(ecosystem, name, "1.0"), timeout_s=1)
+    assert fake.urls == [
+        f"https://api.deps.dev/v3/systems/{system}/packages/{encoded}/versions/1.0"
+    ]
+
+
 def test_supported_package_name_is_url_encoded() -> None:
     fake = _deps_dev({"isDeprecated": False})
     with patch("version_info.deprecation.get_json", side_effect=fake):
